@@ -30,7 +30,7 @@ dynamic = ["version"]
 
 
 [tool.setuptools.dynamic]
-version = {attr = "my_package.VERSION"}
+version = {attr = "textgen.__version__"}
 
 
 [project.optional-dependencies]
