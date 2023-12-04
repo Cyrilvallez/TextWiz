@@ -4,7 +4,7 @@ templates are especially not meant for conversations with the models, only for p
 memory of previous prompts.
 """
 
-from textgen.loader import ALLOWED_MODELS
+from textwiz.loader import ALLOWED_MODELS
 
 PROMPT_MODES = ('default', 'generation', 'infill', 'chat')
 

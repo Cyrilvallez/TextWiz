@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 
 [project]
-name = "llm-engine"
+name = "textwiz"
 authors = [
   {name="Cyril Vallez", email="cyril.vallez@gmail.com"},
 ]
@@ -15,6 +15,7 @@ description = "An even simpler way to use open-source LLMs."
 keywords = ["LLM", "text-generation"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License"
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -26,7 +27,7 @@ dynamic = ["version"]
 
 
 [tool.setuptools.dynamic]
-version = {attr = "textgen.__version__"}
+version = {attr = "textwiz.__version__"}
 
 
 # [project.optional-dependencies]

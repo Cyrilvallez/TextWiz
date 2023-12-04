@@ -4,8 +4,8 @@ This file contains the conversation templates for the models we use.
 import uuid
 import copy
 
-from textgen import loader
-from textgen import utils
+from textwiz import loader
+from textwiz import utils
 
 
 class GenericConversation(object):

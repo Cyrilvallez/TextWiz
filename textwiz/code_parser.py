@@ -1,7 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 
-from textgen import utils
+from textwiz import utils
 
 
 class CodeParser(ABC):

@@ -11,13 +11,13 @@ import scipy
 import numpy as np
 from transformers import StoppingCriteriaList, GenerationConfig
 
-from textgen import loader
-from textgen import stopping
-from textgen import utils
-from textgen.prompt_template import GenericPromptTemplate, get_prompt_template
-from textgen.conversation_template import GenericConversation, get_empty_conversation_template, get_conversation_from_yaml_template
-from textgen.code_parser import CodeParser
-from textgen.constants import SENTENCEPIECE_CHARACTER
+from textwiz import loader
+from textwiz import stopping
+from textwiz import utils
+from textwiz.prompt_template import GenericPromptTemplate, get_prompt_template
+from textwiz.conversation_template import GenericConversation, get_empty_conversation_template, get_conversation_from_yaml_template
+from textwiz.code_parser import CodeParser
+from textwiz.constants import SENTENCEPIECE_CHARACTER
 
 
 class HFModel(object):
