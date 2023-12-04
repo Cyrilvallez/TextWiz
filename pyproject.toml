@@ -39,6 +39,6 @@ version = {attr = "textwiz.__version__"}
 
 
 [project.urls]
-Homepage = "https://github.com/pypa/sampleproject"
-Issues = "https://github.com/pypa/sampleproject/issues"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/Cyrilvallez/TextWiz"
+Issues = "https://github.com/Cyrilvallez/TextWiz/issues"
+Changelog = "https://github.com/Cyrilvallez/TextWiz/blob/main/CHANGELOG.md"

@@ -1,1 +1,1 @@
-include llm-engine/data/*.txt
+recursive-include textwiz/data/memory_estimator **.json
