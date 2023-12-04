@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "llm-engine"
+authors = [
+  {name="Cyril Vallez", email="cyril.vallez@gmail.com"},
+]
+maintainers = [
+  {name="Cyril Vallez", email="cyril.vallez@gmail.com"},
+]
+description = "An even simpler way to use open-source LLMs."
+keywords = ["LLM", "text-generation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+dependencies = [
+  "httpx",
+  "gidgethub[httpx]>4.0.0",
+  "django>2.1; os_name != 'nt'",
+  "django>2.0; os_name == 'nt'",
+]
+dynamic = ["version"]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "my_package.VERSION"}
+
+
+[project.optional-dependencies]
+gui = ["PyQt5"]
+cli = [
+  "rich",
+  "click",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"
+Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
