@@ -1,3 +1,3 @@
-# textwiz
+# TextWiz
 
-This is a test.
+Extremely easy text generation with state-of-the-art LLMs.
