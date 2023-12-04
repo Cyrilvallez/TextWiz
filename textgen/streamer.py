@@ -1,5 +1,7 @@
 from transformers import TextIteratorStreamer, AutoTokenizer
 
+from textgen.constants import SENTENCEPIECE_CHARACTER
+
 class TextContinuationStreamer(TextIteratorStreamer):
     """Same as `TextIteratorStreamer`, but add the first space that does not get added by default during 
     continuation of prompts for models using Llama tokenizer (Llama2, Vicuna,...).
@@ -31,8 +33,7 @@ class TextContinuationStreamer(TextIteratorStreamer):
         add_space = False
         if self.counter == 0:
             first_token = self.tokenizer.convert_ids_to_tokens(self.token_cache[0])
-            sentencepiece_character = b'\xe2\x96\x81'.decode()
-            add_space = first_token.startswith(sentencepiece_character)
+            add_space = first_token.startswith(SENTENCEPIECE_CHARACTER)
             
 
         # After the symbol for a new line, we flush the cache.

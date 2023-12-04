@@ -6,8 +6,6 @@ import math
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from textgen import warnings_suppressor
-
 
 def _infer_model_size(model_name: str) -> float:
     """Return the number of parameters a model has from its name if it can be inferred from it. Raise a 
@@ -709,8 +707,6 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
             # Providing 'balanced' dispatch correctly with respect to the max_memory_map we provide
             device_map = 'balanced'
 
-    # this with statement is not useful anymore since bitsandbytes v0.41.0
-    # with warnings_suppressor.swallow_bitsandbytes_prints():
     # Load model
     model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], device_map=device_map,
                                                  torch_dtype=dtype, load_in_8bit=quantization_8bits,

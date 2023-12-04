@@ -335,7 +335,7 @@ class VicunaConversation(GenericConversation):
     
 
 # reference: https://github.com/facebookresearch/llama/blob/1a240688810f8036049e8da36b073f63d2ac552c/llama/generation.py#L212
-class Llama2ChatConversation(GenericConversation):
+class Llama2Conversation(GenericConversation):
 
     def __init__(self, eos_token: str):
 
@@ -481,14 +481,20 @@ CONVERSATION_MAPPING = {
     'vicuna-13B': VicunaConversation,
 
     # Llama2-chat
-    'llama2-7B-chat': Llama2ChatConversation,
-    'llama2-13B-chat': Llama2ChatConversation,
-    'llama2-70B-chat': Llama2ChatConversation,
+    'llama2-7B-chat': Llama2Conversation,
+    'llama2-13B-chat': Llama2Conversation,
+    'llama2-70B-chat': Llama2Conversation,
 
     # Code-llama-instruct
-    'code-llama-7B-instruct': Llama2ChatConversation,
-    'code-llama-13B-instruct': Llama2ChatConversation,
-    'code-llama-34B-instruct': Llama2ChatConversation,
+    'code-llama-7B-instruct': Llama2Conversation,
+    'code-llama-13B-instruct': Llama2Conversation,
+    'code-llama-34B-instruct': Llama2Conversation,
+
+    # Mistral
+    'mistral-7B-instruct': MistralConversation,
+
+    # Zephyr
+    'zephyr-7B-beta': ZephyrConversation,
 }
 
 

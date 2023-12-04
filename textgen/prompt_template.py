@@ -175,7 +175,8 @@ class StarCoderPromptTemplate(GenericPromptTemplate):
     def __init__(self, mode: str = 'default'):
 
         super().__init__(mode)
-        self.default_mode = 'infill'
+        # self.default_mode = 'infill'
+        self.default_mode = 'generation'
 
         self.prefix_token = '<fim_prefix>'
         self.suffix_token = '<fim_suffix>'
@@ -218,8 +219,8 @@ class Codegen2PromptTemplate(GenericPromptTemplate):
 
         super().__init__(mode)
         # Keep the default to generation as the infill mode seems to be worse (at least on HumanEval)
-        self.default_mode = 'infill'
-        # self.default_mode = 'generation'
+        # self.default_mode = 'infill'
+        self.default_mode = 'generation'
 
         self.mask_token = '<mask_1>'
         self.eos_token = '<|endoftext|>'
