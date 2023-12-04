@@ -15,7 +15,6 @@ description = "An even simpler way to use open-source LLMs."
 keywords = ["LLM", "text-generation"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
 ]
 readme = "README.md"
 license = {file = "LICENSE"}
