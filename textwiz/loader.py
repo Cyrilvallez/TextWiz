@@ -1,7 +1,8 @@
 import warnings
-import logging
 import re
 import math
+import importlib.metadata
+from packaging import version
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -69,7 +70,7 @@ def _register_model(model_name: str):
         raise ValueError('Cannot register a model with a name containing special or lowercase characters.')
 
     required_suffixes = ('MODELS_MAPPING', 'MODELS_DTYPES', 'MODELS_PARAMS', 'MODELS_FAMILY', 'MODELS_CONTEXT_SIZE')
-    optional_suffixes = ('MODELS_ADDITIONAL_MODEL_KWARGS', 'MODELS_ADDITIONAL_TOKENIZER_KWARGS')
+    optional_suffixes = ('MODELS_VERSIONS', 'MODELS_ADDITIONAL_MODEL_KWARGS', 'MODELS_ADDITIONAL_TOKENIZER_KWARGS')
 
     # Template string to `exec` in order to merge the dictionaries
     template = 'ALL_{suffix}.update({model_name}_{suffix})'
@@ -94,6 +95,7 @@ ALL_MODELS_DTYPES = {}
 ALL_MODELS_PARAMS = {}
 ALL_MODELS_FAMILY = {}
 ALL_MODELS_CONTEXT_SIZE = {}
+ALL_MODELS_VERSIONS = {}
 ALL_MODELS_ADDITIONAL_MODEL_KWARGS = {}
 ALL_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {}
     
@@ -344,7 +346,7 @@ CODE_LLAMA_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model i
 _register_model('CODE_LLAMA')
 
 
-# Mistral instruct model
+# Mistral models
 MISTRAL_MODELS_MAPPING = {
     'mistral-7B': 'mistralai/Mistral-7B-v0.1',
     'mistral-7B-instruct': 'mistralai/Mistral-7B-Instruct-v0.1',
@@ -353,18 +355,24 @@ MISTRAL_MODELS_DTYPES = {model: torch.bfloat16 for model in MISTRAL_MODELS_MAPPI
 MISTRAL_MODELS_PARAMS = _infer_model_sizes(MISTRAL_MODELS_MAPPING)
 MISTRAL_MODELS_FAMILY = {model: 'mistral' for model in MISTRAL_MODELS_MAPPING.keys()}
 MISTRAL_MODELS_CONTEXT_SIZE = {model: 8192 for model in MISTRAL_MODELS_MAPPING.keys()}
+MISTRAL_MODELS_VERSIONS = {model: {'transformers': '>=4.34.0', 'tokenizers': '>=0.14.0'} for model in MISTRAL_MODELS_MAPPING.keys()}
 MISTRAL_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in MISTRAL_MODELS_MAPPING.keys()}
 _register_model('MISTRAL')
 
 
-# Zephyr model
+# Zephyr models
 ZEPHYR_MODELS_MAPPING = {
+    'zephyr-7B-alpha': 'HuggingFaceH4/zephyr-7b-alpha',
     'zephyr-7B-beta': 'HuggingFaceH4/zephyr-7b-beta',
 }
 ZEPHYR_MODELS_DTYPES = {model: torch.bfloat16 for model in ZEPHYR_MODELS_MAPPING.keys()}
 ZEPHYR_MODELS_PARAMS = _infer_model_sizes(ZEPHYR_MODELS_MAPPING)
 ZEPHYR_MODELS_FAMILY = {model: 'zephyr' for model in ZEPHYR_MODELS_MAPPING.keys()}
 ZEPHYR_MODELS_CONTEXT_SIZE = {model: 8192 for model in ZEPHYR_MODELS_MAPPING.keys()}
+ZEPHYR_MODELS_VERSIONS = {
+    'zephyr-7B-alpha': {'transformers': '>=4.34.0', 'tokenizers': '>=0.14.0'},
+    'zephyr-7B-beta': {'transformers': '>=4.35.0', 'tokenizers': '>=0.14.0'},
+}
 ZEPHYR_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in ZEPHYR_MODELS_MAPPING.keys()}
 _register_model('ZEPHYR')
 
@@ -434,6 +442,49 @@ def get_model_context_size(model_name: str) -> int:
         raise ValueError(f'The model name must be one of {*ALLOWED_MODELS,}.')
     
     return ALL_MODELS_CONTEXT_SIZE[model_name]
+
+
+
+def check_versions(model_name: str):
+    """Ensure that the versions are compatible with the current `model_name`, and raises an error if it is 
+    not the case.
+
+    Parameters
+    ----------
+    model_name : str
+        The model name.
+    """
+
+    if model_name not in ALLOWED_MODELS:
+        raise ValueError(f'The model name must be one of {*ALLOWED_MODELS,}.')
+    
+    if model_name not in ALL_MODELS_VERSIONS.keys():
+        return
+
+    versions = ALL_MODELS_VERSIONS[model_name]
+    packages_to_check = list(versions.keys())
+
+    pattern = r'(>=|<=)([0-9]+\.[0-9]+\.[0-9]+)'
+    comparators = {'>=': lambda x, y: x >= y, '<=': lambda x, y: x <= y}
+    
+    version_errors = []
+    for package in packages_to_check:
+
+        # Check package version without importing
+        actual_version = version.parse(importlib.metadata.version(package))
+        requirements = versions[package]
+        parsing = re.findall(pattern, requirements)
+
+        for comparator, required_version in parsing:
+            required_version = version.parse(required_version)
+            if not comparators[comparator](actual_version, required_version):
+                version_errors.append(f'{package} {comparator} {required_version}')
+
+    if len(version_errors) > 0:
+        raise RuntimeError(f'{model_name} requires the following package versions: {*version_errors,}')
+    else:
+        return
+
 
 
 def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, quantization_4bits: bool = False,
@@ -572,6 +623,9 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     if model_name not in ALLOWED_MODELS:
         raise ValueError(f'The model name must be one of {*ALLOWED_MODELS,}.')
     
+    # Check package versions
+    check_versions(model_name)
+    
     # Set the dtype if not provided
     if dtype is None:
         dtype = ALL_MODELS_DTYPES[model_name]
@@ -682,6 +736,9 @@ def load_tokenizer(model_name: str):
 
     if model_name not in ALLOWED_MODELS:
         raise ValueError(f'The model name must be one of {*ALLOWED_MODELS,}.') 
+    
+    # Check package versions
+    check_versions(model_name)
     
     if model_name in ALL_MODELS_ADDITIONAL_TOKENIZER_KWARGS.keys():
         additional_kwargs = ALL_MODELS_ADDITIONAL_TOKENIZER_KWARGS[model_name]
