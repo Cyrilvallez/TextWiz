@@ -10,7 +10,7 @@ from textwiz.streamer import TextContinuationStreamer
 from textwiz import warnings_suppressor
 
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 
 def is_chat_model(model_name: str) -> bool:
