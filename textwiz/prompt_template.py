@@ -386,6 +386,7 @@ PROMPT_MAPPING = {
     'mistral-7B-instruct': MistralPromptTemplate,
 
     # Zephyr
+    'zephyr-7B-alpha': ZephyrPromptTemplate,
     'zephyr-7B-beta': ZephyrPromptTemplate,
 }
 

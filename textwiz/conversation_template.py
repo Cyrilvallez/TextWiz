@@ -494,6 +494,7 @@ CONVERSATION_MAPPING = {
     'mistral-7B-instruct': MistralConversation,
 
     # Zephyr
+    'zephyr-7B-alpha': ZephyrConversation,
     'zephyr-7B-beta': ZephyrConversation,
 }
 
