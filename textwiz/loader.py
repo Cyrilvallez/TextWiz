@@ -277,6 +277,10 @@ CODEGEN2_MODELS_FAMILY = {
     'codegen25-7B-instruct': 'codegen2.5',
 }
 CODEGEN2_MODELS_CONTEXT_SIZE = {model: 2048 for model in CODEGEN2_MODELS_MAPPING.keys()}
+CODEGEN2_MODELS_VERSIONS = {
+    'codegen25-7B': {'transformers': '<=4.33.3', 'tokenizers': '<=0.13.3'},
+    'codegen25-7B-instruct': {'transformers': '<=4.33.3', 'tokenizers': '<=0.13.3'},
+}
 CODEGEN2_MODELS_ADDITIONAL_MODEL_KWARGS = {
     'codegen2-1B': {'trust_remote_code': True, 'revision': 'main'},
     'codegen2-3.7B': {'trust_remote_code': True, 'revision': 'main'},
