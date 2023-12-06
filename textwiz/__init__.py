@@ -6,7 +6,7 @@ from textwiz.prompt_template import get_prompt_template
 from textwiz.stopping import StoppingType, create_stopping_criteria, post_process_sequences
 from textwiz.code_parser import PythonParser
 from textwiz.streamer import TextContinuationStreamer
-# import it here so that the warnings are suppressed when doing `import engine`
+# import it here so that the warnings are suppressed when doing `import textwiz`
 from textwiz import warnings_suppressor
 
 
