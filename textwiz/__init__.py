@@ -32,5 +32,3 @@ def is_chat_model(model_name: str) -> bool:
 
     template = get_prompt_template(model_name)
     return template.default_mode == 'chat'
-
-# this is a test
