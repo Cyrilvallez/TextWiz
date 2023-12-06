@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from transformers import PreTrainedTokenizerBase, StoppingCriteria, StoppingCriteriaList
 
-from textwiz.code_parser import CodeParser
+from .code_parser import CodeParser
 
 # If we reach one of these patterns, it means that the model has finished generating the solution as a 
 # function and continues useless generation (basically stop words used in the Codex/HumanEval 
