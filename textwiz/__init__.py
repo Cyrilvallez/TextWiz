@@ -8,6 +8,8 @@ from .code_parser import PythonParser
 from .streamer import TextContinuationStreamer
 # import it here so that the warnings are suppressed when doing `import textwiz`
 from . import warnings_suppressor
+# also import some of the submodules for convenience
+from . import loader, conversation_template, prompt_template
 
 
 __version__ = '0.0.7'
