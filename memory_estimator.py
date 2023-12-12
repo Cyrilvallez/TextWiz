@@ -214,6 +214,10 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
 
     t0 = time.time()
 
+    # Override quantization for bloom due to its size
+    if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
+        quantization_8bits = True
+
     # Initialize filenames and return if files already exist
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
     filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', model_name, f'{dtype_name}.json')
@@ -221,11 +225,8 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
         print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
         return
 
-    # Override quantization for bloom because it's too big
-    if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
-        model = HFModel(model_name, quantization_8bits=True)
-    else:
-        model = HFModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits)
+    # Load model
+    model = HFModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits)
 
     # To avoid possible early stopping on extra eos
     model.extra_eos_tokens = []
