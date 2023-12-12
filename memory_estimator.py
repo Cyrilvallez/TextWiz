@@ -218,12 +218,12 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
     filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', model_name, f'{dtype_name}.json')
     if os.path.exists(filename_memory):
-        print(f'It seems like a memory estimation already exists for {model_name} and current selected dtype.')
+        print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
         return
 
     # Override quantization for bloom because it's too big
     if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
-        model = HFModel(model_name, quantization_8bits=True, max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)
+        model = HFModel(model_name, quantization_8bits=True)
     else:
         model = HFModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits)
 
