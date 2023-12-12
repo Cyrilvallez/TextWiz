@@ -532,12 +532,12 @@ def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, q
     if quantization_4bits and quantization_8bits:
         quantization_8bits = False
 
-    # In this case we set it to 0.9 because otherwise bitsandbytes complain that we don't have enough resources
+    # In this case we set it to 0.85 because otherwise bitsandbytes complain that we don't have enough resources
     # but in practice after loading the model uses less memory than this
     if (model_name == 'bloom-176B' and quantization_8bits and not quantization_4bits and \
         max_fraction_gpu_0 == 0.8 and max_fraction_gpus == 0.8):
-        max_fraction_gpu_0 = 0.9
-        max_fraction_gpus = 0.9
+        max_fraction_gpu_0 = 0.85
+        max_fraction_gpus = 0.85
 
     # If not provided take the default one
     if dtype is None:
@@ -556,12 +556,16 @@ def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, q
     rough_model_size_estimate = ALL_MODELS_PARAMS[model_name] * size_multiplier
     
     # We assume that we always have identical gpus when using multiple gpus
-    gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    if torch.cuda.is_available():
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    else:
+        gpu_memory = 40
+        warnings.warn('Could not find any GPUs on your system. Showing estimation for a system equipped with A100 40GB GPUs.')
     # Say we only have access to a portion of that memory for our model
     gpu_0_available_memory = max_fraction_gpu_0 * gpu_memory
     gpus_available_memory = max_fraction_gpus * gpu_memory
 
-    # Heuristic: if the remainder is smaller than 2% of gpu_memory, do not add a gpu 
+    # Heuristic: if the remainder is smaller than 2% of gpu_memory, do not add a gpu
     if rough_model_size_estimate <= gpu_0_available_memory + 0.02 * gpu_memory:
         return 1, None
     
@@ -569,15 +573,11 @@ def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, q
         max_memory_map = {0: f'{math.ceil(gpu_0_available_memory)}GiB'}
         to_fit_on_other_gpus = rough_model_size_estimate - gpu_0_available_memory
         additional_gpus_needed = int(to_fit_on_other_gpus // gpus_available_memory)
-
-        # Heuristic: if the remainder is smaller than 2% of each gpu_memory, do not add a gpu and distill
-        # the small excess between existing gpus
-        if to_fit_on_other_gpus % gpus_available_memory >= (0.02 * gpu_memory) * additional_gpus_needed:
+        # This is bound to be (almost) always True. For multiple GPU setup, we do not try to distill the remainder
+        # between GPUs even if it is small.
+        if to_fit_on_other_gpus % gpus_available_memory > 0:
             additional_gpus_needed += 1
-            available_gpu_size = math.ceil(gpus_available_memory)
-        else:
-            # Add the 2% to the gpus size requirements
-            available_gpu_size = math.ceil((max_fraction_gpus + 0.02) * gpu_memory)
+        available_gpu_size = math.ceil(gpus_available_memory)
 
         gpu_needed = 1 + additional_gpus_needed
         for i in range(1, gpu_needed):

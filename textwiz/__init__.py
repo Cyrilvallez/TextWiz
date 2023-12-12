@@ -58,13 +58,18 @@ def estimate_number_of_gpus(models: list[str], quantization_8bits: bool = False,
     list[int]
         The number of gpus for each model.
     """
+
+    # Import it here because we do not want it as part as the package namespace
+    import warnings
     
     model_footprints = []
     for model in models:
         # Override quantization for bloom because it's too big to load in float16
         if model == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
+            warnings.warn(f'GPU estimation for {model} was computed with int8 quantization because it is too large.')
             gpu_needed, _ = estimate_model_gpu_footprint(model, quantization_8bits=True, quantization_4bits=False,
-                                                         max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)
+                                                         max_fraction_gpu_0=max_fraction_gpu_0,
+                                                         max_fraction_gpus=max_fraction_gpus)
         else:
             gpu_needed, _ = estimate_model_gpu_footprint(model, quantization_8bits=quantization_8bits,
                                                          quantization_4bits=quantization_4bits,
