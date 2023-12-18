@@ -939,8 +939,10 @@ class HFModel(object):
         if stride >= max_length:
             raise RuntimeError('The stride should be lower than the model maximum context size.')
 
-        criterion = torch.nn.CrossEntropyLoss(ignore_index=-100, reduction='mean')
-        losses = []
+        # Use reduction='sum' instead of 'mean' to compute correct mean at the end (the mean of the mean is incorrect)
+        criterion = torch.nn.CrossEntropyLoss(ignore_index=-100, reduction='sum')
+        loss = torch.tensor(0., requires_grad=False, device=self.input_device)
+
         prev_end_loc = 0
         for begin_loc in range(0, seq_len, stride):
             end_loc = min(begin_loc + max_length, seq_len)
@@ -971,20 +973,21 @@ class HFModel(object):
 
                 # Logits now have dimension (len(input_ids)-1, vocab_size). This correspond to the logit distribution
                 # for each token given the previous ones. Instead of applying a softmax, taking the probability
-                # corresponding to the input token, and averaging, we can directly use the CrossEntropyLoss as a trick. 
+                # corresponding to the input token, and summing, we can directly use the CrossEntropyLoss as a trick. 
                 # That is, we see it as the loss for a problem with C=vocab_size classes, and an "artificial batch"
                 # of size len(input_ids)-1
-                loss = criterion(logits, target_ids)
-
-            losses.append(loss)
+                loss += criterion(logits, target_ids)
 
             prev_end_loc = end_loc
             if end_loc == seq_len:
                 break
 
-        perplexity_output = torch.exp(torch.stack(losses).mean())
         
-        return perplexity_output
+        # Don't forget to apply the exponential after dividing by the total size of the sequence
+        perplexity_output = torch.exp(loss / (seq_len-1))
+
+        return perplexity_output.item()
+        
 
 
 
