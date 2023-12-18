@@ -931,7 +931,7 @@ class HFModel(object):
             The perplexity of `text` given the current model.
         """
 
-        encoding = self.model.tokenizer(text, return_tensors='pt')
+        encoding = self.tokenizer(text, return_tensors='pt')
 
         max_length = self.get_context_size()
         seq_len = encoding.input_ids.shape[-1]
