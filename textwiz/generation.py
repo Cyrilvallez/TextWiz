@@ -910,7 +910,6 @@ class HFModel(object):
         return new_conv
     
 
-
     def perplexity(self, text: str, stride = 512) -> float:
         """Compute the perplexity of given `text`. If the number of tokens is larger than the maximum context size,
         use a sliding window with given `stride`. That is, we will move the input of `stride` tokens at each iteration.
@@ -957,9 +956,9 @@ class HFModel(object):
             target_ids[:, :-target_length] = -100
 
             # Remove first target as we cannot compute the probability distribution for the first token of the input.
-            # This is not an issue since for first iteration the first token is <EOS>, and it is masked for other iterations
+            # This is not an issue since for first iteration the first token is <BOS>, and it is masked for other iterations
             target_ids = target_ids[:, 1:]
-            # Remove batch dimension of size 1
+            # Remove batch dimension of size 1 (empty)
             target_ids = target_ids.squeeze(0)
 
             with torch.no_grad():
@@ -968,7 +967,7 @@ class HFModel(object):
                 # Extract the logits for all tokens except the last one (we do not care about the probability
                 # distribution of what would be the new token if we were performing auto-regresive generation)
                 logits = outputs.logits[:, :-1, :]
-                # Remove batch dimension of size 1.
+                # Remove batch dimension of size 1 (empty)
                 logits = logits.squeeze(0)
 
                 # Logits now have dimension (len(input_ids)-1, vocab_size). This correspond to the logit distribution
@@ -982,7 +981,6 @@ class HFModel(object):
             if end_loc == seq_len:
                 break
 
-        
         # Don't forget to apply the exponential after dividing by the total size of the sequence
         perplexity_output = torch.exp(loss / (seq_len-1))
 
