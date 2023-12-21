@@ -6,7 +6,7 @@ import argparse
 
 import torch
 
-import textwiz
+from . import textwiz
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
