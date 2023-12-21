@@ -7,7 +7,7 @@ TextWiz is a wrapper around Huggingface's `transformers` library, allowing extre
 You can easily install it with pip in your favorite environment:
 
 ```sh
-pip install txtwiz
+pip install textwiz
 ```
 
 ## Usage examples
