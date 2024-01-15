@@ -6,7 +6,7 @@ import argparse
 
 import torch
 
-from . import textwiz
+import textwiz
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     
     num_gpus = torch.cuda.device_count()
 
-    # Select chat models (only keep the good coders)
+    # Select models
     models = textwiz.loader.ALLOWED_MODELS
 
     print(f'Launching computations with {num_gpus} gpus available.')

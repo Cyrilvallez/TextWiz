@@ -7,7 +7,7 @@ import logging
 import torch
 import numpy as np
 
-from .textwiz import HFModel, loader, warnings_suppressor, utils
+from textwiz import HFModel, loader, warnings_suppressor, utils
 
 # Remove warning when tokenizing sequences longer than expected: we know we are doing it!
 logger = logging.getLogger('transformers.tokenization_utils_base')
