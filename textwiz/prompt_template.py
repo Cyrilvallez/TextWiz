@@ -288,6 +288,37 @@ class Llama2ChatPromptTemplate(GenericPromptTemplate):
         return formatted_prompt
     
 
+
+# references: https://huggingface.co/codellama/CodeLlama-70b-Instruct-hf#chat_prompt
+# and https://github.com/facebookresearch/codellama/blob/main/llama/generation.py#L506-L548
+class CodeLlama70BInstructPromptTemplate(GenericPromptTemplate):
+
+    def __init__(self, mode: str = 'default'):
+
+        super().__init__(mode)
+        self.default_mode = 'chat'
+
+        self.system_token = 'Source: system'
+        self.user_token = 'Source: user'
+        self.assistant_token = 'Source: assistant'
+        self.separator = '<step>'
+
+
+    def format_chat(self, prompt: str, model_context: str = '', system_prompt: str = '') -> str:
+
+        # If we are not using system prompt, the original code still add an empty string
+        formatted_prompt = self.system_token + '\n\n ' + system_prompt.strip() + ' ' + self.separator + ' '
+
+        formatted_prompt += self.user_token + '\n\n ' + prompt.strip() + ' ' + self.separator + ' '
+        formatted_prompt += self.assistant_token + '\nDestination: user\n\n ' 
+        
+        if model_context != '':
+            formatted_prompt += model_context
+
+        return formatted_prompt
+
+
+
 # reference: https://docs.mistral.ai/usage/guardrailing/
 class MistralPromptTemplate(GenericPromptTemplate):
 
@@ -381,6 +412,8 @@ PROMPT_MAPPING = {
     'code-llama-7B-instruct': Llama2ChatPromptTemplate,
     'code-llama-13B-instruct': Llama2ChatPromptTemplate,
     'code-llama-34B-instruct': Llama2ChatPromptTemplate,
+    # Special template for the 70B version
+    'code-llama-70B-instruct': CodeLlama70BInstructPromptTemplate,
 
     # Mistral
     'mistral-7B-instruct': MistralPromptTemplate,

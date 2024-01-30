@@ -212,7 +212,7 @@ class GenericConversation(object):
         # Use a copy since we will modify the last model turn
         conv_copy = copy.deepcopy(self)
         last_model_output = conv_copy.model_history_text[-1]
-        # Set it to None to mimic the behavior of an un
+        # Set it to None to mimic the behavior of an unanswered turn
         conv_copy.model_history_text[-1] = None
 
         # Get prompt of conversation without the last model turn
@@ -386,6 +386,52 @@ class Llama2Conversation(GenericConversation):
         return prompt
     
 
+# references: https://huggingface.co/codellama/CodeLlama-70b-Instruct-hf#chat_prompt
+# and https://github.com/facebookresearch/codellama/blob/main/llama/generation.py#L506-L548
+class CodeLlama70BConversation(GenericConversation):
+
+    def __init__(self, eos_token: str):
+
+        super().__init__(eos_token)
+
+        # Override value
+        self.add_space_to_continuation_prompt = False
+
+        self.bos_token = '<s>'
+
+        self.system_prompt = ("You are a helpful, respectful and honest assistant. Always answer as helpfully "
+                              "as possible, while being safe. Your answers should not include any harmful, "
+                              "unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that "
+                              "your responses are socially unbiased and positive in nature.\n\n"
+                              "If a question does not make any sense, or is not factually coherent, explain why "
+                              "instead of answering something not correct. If you don't know the answer to a "
+                              "question, please don't share false information.")
+
+        self.system_token = 'Source: system'
+        self.user_token = 'Source: user'
+        self.assistant_token = 'Source: assistant'
+        self.separator = '<step>'
+
+
+    def get_prompt(self) -> str:
+        """Format the prompt representing the conversation that we will feed to the tokenizer.
+        """
+
+        # If we are not using system prompt, the original code still add an empty string
+        prompt = self.system_token + '\n\n ' + self.system_prompt.strip() + ' ' + self.separator + ' '
+
+        for user_message, model_response in self:
+
+            prompt += self.user_token + '\n\n ' + user_message.strip() + ' ' + self.separator + ' '
+
+            if model_response is not None:
+                prompt += self.assistant_token + '\n\n ' + model_response.strip() + ' ' + self.separator + ' '
+            else:
+                prompt += self.assistant_token + '\nDestination: user\n\n ' 
+
+        return prompt
+    
+
 # reference: https://docs.mistral.ai/usage/guardrailing/
 class MistralConversation(GenericConversation):
 
@@ -489,6 +535,8 @@ CONVERSATION_MAPPING = {
     'code-llama-7B-instruct': Llama2Conversation,
     'code-llama-13B-instruct': Llama2Conversation,
     'code-llama-34B-instruct': Llama2Conversation,
+    # Special syntax for the 70B version
+    'code-llama-70B-instruct': CodeLlama70BConversation,
 
     # Mistral
     'mistral-7B-instruct': MistralConversation,
