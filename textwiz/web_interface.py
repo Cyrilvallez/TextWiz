@@ -2,6 +2,8 @@
 import queue
 import copy
 from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Generator
+from typing import TypeVar
 
 from transformers import TextIteratorStreamer
 import gradio as gr
@@ -10,12 +12,17 @@ from .generation import HFModel
 from .streamer import TextContinuationStreamer
 from .conversation_template import GenericConversation
 
+# Define return types for our yield-only generators
+T = TypeVar('T')
+generator = Generator[T, None, None]
+
+
 
 TIMEOUT = 20
 
 
 def text_generation(model: HFModel, prompt: str, max_new_tokens: int, do_sample: bool, top_k: int, top_p: float,
-                    temperature: float, use_seed: bool, seed: int, **kwargs) -> str:
+                    temperature: float, use_seed: bool, seed: int, **kwargs) -> generator[str]:
     """Text generation with `model`. This is a generator yielding tokens as they are generated.
 
     Parameters
@@ -84,7 +91,7 @@ def text_generation(model: HFModel, prompt: str, max_new_tokens: int, do_sample:
 
 def chat_generation(model: HFModel, conversation: GenericConversation, prompt: str, max_new_tokens: int,
                     do_sample: bool,top_k: int, top_p: float, temperature: float, use_seed: bool, seed: int,
-                    **kwargs) -> tuple[str, GenericConversation, list[list]]:
+                    **kwargs) -> generator[tuple[str, GenericConversation, list[list]]]:
     """Chat generation with `model`. This is a generator yielding tokens as they are generated.
 
     Parameters
@@ -162,7 +169,7 @@ def chat_generation(model: HFModel, conversation: GenericConversation, prompt: s
 
 def continue_generation(model: HFModel, conversation: GenericConversation, additional_max_new_tokens: int,
                         do_sample: bool, top_k: int, top_p: float, temperature: float, use_seed: bool,
-                        seed: int, **kwargs) -> tuple[GenericConversation, list[list]]:
+                        seed: int, **kwargs) -> generator[tuple[GenericConversation, list[list]]]:
     """Continue the last turn of the `model` output. This is a generator yielding tokens as they are generated.
 
     Parameters
@@ -246,7 +253,7 @@ def continue_generation(model: HFModel, conversation: GenericConversation, addit
 
 def retry_chat_generation(model: HFModel, conversation: GenericConversation, max_new_tokens: int, do_sample: bool,
                           top_k: int, top_p: float, temperature: float, use_seed: bool,
-                          seed: int, **kwargs) -> tuple[GenericConversation, list[list]]:
+                          seed: int, **kwargs) -> generator[tuple[GenericConversation, list[list]]]:
     """Regenerate the last turn of the conversation. This is a generator yielding tokens as they are generated.
 
     Parameters
