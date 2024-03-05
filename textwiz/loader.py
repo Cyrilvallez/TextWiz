@@ -708,10 +708,39 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
             device_map = 'balanced'
 
     # Load model
-    model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], device_map=device_map,
-                                                 torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                                 load_in_4bit=quantization_4bits, low_cpu_mem_usage=True,
-                                                 **additional_kwargs)
+    # We first try with flash attention 2
+    try:
+        model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
+                                                     device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
+                                                     load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+        success = True
+    except:
+        success = False
+    
+    # Second try with Pytorch native sdpa (which may sometimes but not for all models also use flash attention 2)
+    if not success:
+        try:
+            model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='sdpa',
+                                                         device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
+                                                         load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+            success = True
+        except:
+            success = False
+
+    # Last try with BetterTransformer, which is the same as sdpa but with coverage for more models
+    if not success:
+        model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='eager', device_map=device_map,
+                                                     torch_dtype=dtype, load_in_8bit=quantization_8bits, load_in_4bit=quantization_4bits,
+                                                     low_cpu_mem_usage=True, **additional_kwargs)
+        # For some reason bettertransformer is supported for codegen2 models but makes them crash during the forward
+        if not ('codegen2-' in model_name):
+            # Convert to better transformer to use Pytorch optimizations if supported by the model
+            try:
+                model = model.to_bettertransformer()
+            except:
+                warnings.warn(('The default manual attention implementation will be used. This will result in slower generation and '
+                               'higher memory usage. This should not be an issue for small models.'))
+        
     
     # If the flag is active we directly put our model on one gpu without using any device_map (this is 
     # more efficient). But if the model is quantized, this is already done automatically because quantization
@@ -719,14 +748,6 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     if only_move_to_one_gpu and not quantization:
         # This operation is in-place for nn.Module
         model.cuda(gpu_rank)
-
-    # For some reason bettertransformer is supported for codegen2 models but makes them crash during the forward
-    if not ('codegen2-' in model_name):
-        # Convert to better transformer to use Pytorch optimizations if supported by the model
-        try:
-            model = model.to_bettertransformer()
-        except:
-            pass
         
     model.eval()
 

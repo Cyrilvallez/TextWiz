@@ -12,7 +12,7 @@ from . import warnings_suppressor
 from . import loader, conversation_template, prompt_template
 
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 
 
 def is_chat_model(model_name: str) -> bool:
