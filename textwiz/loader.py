@@ -5,395 +5,33 @@ import importlib.metadata
 from packaging import version
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModel, AutoTokenizer
 
-
-def _infer_model_size(model_name: str) -> float:
-    """Return the number of parameters a model has from its name if it can be inferred from it. Raise a 
-    ValueError otherwise.
-
-    Parameters
-    ----------
-    model_name : str
-        The model name.
-
-    Returns
-    -------
-    float
-        The number of parameters of the model, in billions.
-    """
-
-    # The following regex matches any digits possibly separated with a dot ('.') which is immeditely
-    # followed by a 'B' or 'M' to capture the model size following our model name convention. Parenthesis 
-    # allow to capture given groups of the regex thanks to the match object .group() method.
-    pattern = r'([0-9]+(?:\.[0-9]+)?)([BM])'
-
-    match = re.search(pattern, model_name)
-    if match:
-        matched_number = match.group(1)
-        matched_letter = match.group(2)
-        # Model size in billion (B) of parameters
-        model_size = float(matched_number) if matched_letter == 'B' else float(matched_number)/1e3
-        return model_size
-    else:
-        raise ValueError('The model number of parameters cannot be inferred from its name.')
-    
-
-def _infer_model_sizes(name_mapping: dict[str, str]) -> dict[str, float]:
-    """Infer the number of parameters of all model names (dict keys) and return them as {key: #params}.
-
-    Parameters
-    ----------
-    name_mapping : dict[str, str]
-        A dictionary whose keys are the model names.
-
-    Returns
-    -------
-    dict[str, float]
-        A mapping from names to number of parameters.
-    """
-
-    return {key: _infer_model_size(key) for key in name_mapping.keys()}
-
-
-def _register_model(model_name: str):
-    """Register a model into the global variables containing all models parameters.
-
-    Parameters
-    ----------
-    model_name : str
-        Name (prefix in uppercase) of the model.
-    """
-
-    # Protect against injections (any character except digits, uppercases and underscore are detected)
-    if re.search(r'[^A-Z0-9_]', model_name):
-        raise ValueError('Cannot register a model with a name containing special or lowercase characters.')
-
-    required_suffixes = ('MODELS_MAPPING', 'MODELS_DTYPES', 'MODELS_PARAMS', 'MODELS_FAMILY', 'MODELS_CONTEXT_SIZE')
-    optional_suffixes = ('MODELS_VERSIONS', 'MODELS_ADDITIONAL_MODEL_KWARGS', 'MODELS_ADDITIONAL_TOKENIZER_KWARGS')
-
-    # Template string to `exec` in order to merge the dictionaries
-    template = 'ALL_{suffix}.update({model_name}_{suffix})'
-
-    for suffix in required_suffixes:
-        code = template.format(suffix=suffix, model_name=model_name)
-        exec(code)
-
-    for suffix in optional_suffixes:
-        try:
-            code = template.format(suffix=suffix, model_name=model_name)
-            exec(code)
-        # In this case the optional variable is not present
-        except NameError:
-            pass
-
-
-    
-# Those will be updated with each call to _register_model()
-ALL_MODELS_MAPPING = {}
-ALL_MODELS_DTYPES = {}
-ALL_MODELS_PARAMS = {}
-ALL_MODELS_FAMILY = {}
-ALL_MODELS_CONTEXT_SIZE = {}
-ALL_MODELS_VERSIONS = {}
-ALL_MODELS_ADDITIONAL_MODEL_KWARGS = {}
-ALL_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {}
-    
-
-# Pretrained bloom models
-BLOOM_MODELS_MAPPING = {
-    'bloom-560M': 'bigscience/bloom-560m',
-    'bloom-1.7B': 'bigscience/bloom-1b7',
-    'bloom-3B': 'bigscience/bloom-3b',
-    'bloom-7.1B':'bigscience/bloom-7b1',
-    'bloom-176B': 'bigscience/bloom',
-}
-BLOOM_MODELS_DTYPES = {
-    'bloom-560M': torch.float16,
-    'bloom-1.7B': torch.float16,
-    'bloom-3B': torch.float16,
-    'bloom-7.1B':torch.float16,
-    'bloom-176B': torch.bfloat16,
-}
-BLOOM_MODELS_PARAMS = _infer_model_sizes(BLOOM_MODELS_MAPPING)
-BLOOM_MODELS_FAMILY = {model: 'bloom' for model in BLOOM_MODELS_MAPPING.keys()}
-BLOOM_MODELS_CONTEXT_SIZE = {model: 2048 for model in BLOOM_MODELS_MAPPING.keys()}
-_register_model('BLOOM')
-
-
-# Pretrained Dialo-GPT models
-DIALO_GPT_MODELS_MAPPING = {
-    'dialo-gpt-small': 'microsoft/DialoGPT-small',
-    'dialo-gpt-medium': 'microsoft/DialoGPT-medium',
-    'dialo-gpt-large': 'microsoft/DialoGPT-large',
-}
-DIALO_GPT_MODELS_DTYPES = {model: torch.float32 for model in DIALO_GPT_MODELS_MAPPING}
-DIALO_GPT_MODELS_PARAMS = {
-    'dialo-gpt-small': 125/1e3,
-    'dialo-gpt-medium': 355/1e3,
-    'dialo-gpt-large': 775/1e3,
-}
-DIALO_GPT_MODELS_FAMILY = {model: 'dialo-gpt' for model in DIALO_GPT_MODELS_MAPPING.keys()}
-DIALO_GPT_MODELS_CONTEXT_SIZE = {model: 1024 for model in DIALO_GPT_MODELS_MAPPING.keys()}
-_register_model('DIALO_GPT')
-
-
-# Pretrained StableLM models
-STABLE_LM_MODELS_MAPPING = {
-    'stable-lm-3B': 'stabilityai/stablelm-base-alpha-3b',
-    'stable-lm-7B': 'stabilityai/stablelm-base-alpha-7b',
-}
-STABLE_LM_MODELS_DTYPES = {model: torch.float16 for model in STABLE_LM_MODELS_MAPPING.keys()}
-STABLE_LM_MODELS_PARAMS = _infer_model_sizes(STABLE_LM_MODELS_MAPPING)
-STABLE_LM_MODELS_FAMILY = {model: 'stable-lm' for model in STABLE_LM_MODELS_MAPPING.keys()}
-STABLE_LM_MODELS_CONTEXT_SIZE = {model: 4096 for model in STABLE_LM_MODELS_MAPPING.keys()}
-_register_model('STABLE_LM')
-
-
-# Pretrained StarCoder models
-STAR_CODER_MODELS_MAPPING = {
-    'star-coder-base': 'bigcode/starcoderbase',
-    'star-coder': 'bigcode/starcoder',
-    'star-coder-plus': 'bigcode/starcoderplus',
-}
-STAR_CODER_MODELS_DTYPES = {model: torch.bfloat16 for model in STAR_CODER_MODELS_MAPPING.keys()}
-STAR_CODER_MODELS_PARAMS = {model: 15.5 for model in STAR_CODER_MODELS_MAPPING.keys()}
-STAR_CODER_MODELS_FAMILY = {model: 'star-coder' for model in STAR_CODER_MODELS_MAPPING.keys()}
-STAR_CODER_MODELS_CONTEXT_SIZE = {model: 8192 for model in STAR_CODER_MODELS_MAPPING.keys()}
-STAR_CODER_MODELS_ADDITIONAL_MODEL_KWARGS = {
-    'star-coder-base': {'trust_remote_code': True},
-}
-_register_model('STAR_CODER')
-
-
-# Pretrained Star-chat models
-STAR_CHAT_MODELS_MAPPING = {
-    'star-chat-alpha': 'HuggingFaceH4/starchat-alpha',
-    'star-chat-beta': 'HuggingFaceH4/starchat-beta',
-}
-STAR_CHAT_MODELS_DTYPES = {
-    'star-chat-alpha': torch.float16,
-    'star-chat-beta': torch.bfloat16,
-}
-STAR_CHAT_MODELS_PARAMS = {model: 15.5 for model in STAR_CHAT_MODELS_MAPPING.keys()}
-STAR_CHAT_MODELS_FAMILY = {model: 'star-chat' for model in STAR_CHAT_MODELS_MAPPING.keys()}
-STAR_CHAT_MODELS_CONTEXT_SIZE = {model: 8192 for model in STAR_CHAT_MODELS_MAPPING.keys()}
-_register_model('STAR_CHAT')
-
-
-# Pretrained GPT-2 models
-GPT2_MODELS_MAPPING = {
-    'gpt2-medium': 'gpt2-medium',
-    'gpt2-large': 'gpt2-large',
-    'gpt2-xl': 'gpt2-xl',
-}
-GPT2_MODELS_DTYPES = {model: torch.float32 for model in GPT2_MODELS_MAPPING.keys()}
-GPT2_MODELS_PARAMS = {
-    'gpt2-medium': 355/1e3,
-    'gpt2-large': 774/1e3,
-    'gpt2-xl': 1.5,
-}
-GPT2_MODELS_FAMILY = {model: 'gpt2' for model in GPT2_MODELS_MAPPING.keys()}
-GPT2_MODELS_CONTEXT_SIZE = {model: 1024 for model in GPT2_MODELS_MAPPING.keys()}
-_register_model('GPT2')
-
-
-# Pretrained GPT-J and GPT-Neo models
-GPT_J_AND_NEO_MODELS_MAPPING = {
-    'gpt-j-6B': 'EleutherAI/gpt-j-6B',
-    'gpt-neo-125M': 'EleutherAI/gpt-neo-125m',
-    'gpt-neo-1.3B': 'EleutherAI/gpt-neo-1.3B',
-    'gpt-neo-2.7B': 'EleutherAI/gpt-neo-2.7B',
-    'gpt-neoX-20B': 'EleutherAI/gpt-neox-20b',
-}
-GPT_J_AND_NEO_MODELS_DTYPES = {
-    'gpt-j-6B': torch.float32,
-    'gpt-neo-125M': torch.float32,
-    'gpt-neo-1.3B': torch.float32,
-    'gpt-neo-2.7B': torch.float32,
-    'gpt-neoX-20B': torch.float16,
-}
-GPT_J_AND_NEO_MODELS_PARAMS = _infer_model_sizes(GPT_J_AND_NEO_MODELS_MAPPING)
-GPT_J_AND_NEO_MODELS_FAMILY = {
-    'gpt-j-6B': 'gpt-j',
-    'gpt-neo-125M': 'gpt-neo',
-    'gpt-neo-1.3B': 'gpt-neo',
-    'gpt-neo-2.7B': 'gpt-neo',
-    'gpt-neoX-20B': 'gpt-neo',
-}
-GPT_J_AND_NEO_MODELS_CONTEXT_SIZE = {model: 2048 for model in GPT_J_AND_NEO_MODELS_MAPPING.keys()}
-_register_model('GPT_J_AND_NEO')
-
-
-# Pretrained OPT models
-OPT_MODELS_MAPPING = {
-    'opt-125M': 'facebook/opt-125m',
-    'opt-350M': 'facebook/opt-350m',
-    'opt-1.3B': 'facebook/opt-1.3b',
-    'opt-2.7B': 'facebook/opt-2.7b',
-    'opt-6.7B': 'facebook/opt-6.7b',
-    'opt-13B': 'facebook/opt-13b',
-    'opt-30B': 'facebook/opt-30b',
-    'opt-66B': 'facebook/opt-66b',
-}
-OPT_MODELS_DTYPES = {model: torch.float16 for model in OPT_MODELS_MAPPING.keys()}
-OPT_MODELS_PARAMS = _infer_model_sizes(OPT_MODELS_MAPPING)
-OPT_MODELS_FAMILY = {model: 'opt' for model in OPT_MODELS_MAPPING.keys()}
-OPT_MODELS_CONTEXT_SIZE = {model: 2048 for model in OPT_MODELS_MAPPING.keys()}
-_register_model('OPT')
-
-
-# Pretrained CodeGEN models
-CODEGEN_MODELS_MAPPING = {
-    'codegen-350M': 'Salesforce/codegen-350M-mono',
-    'codegen-2B': 'Salesforce/codegen-2B-mono',
-    'codegen-6B': 'Salesforce/codegen-6B-mono',
-    'codegen-16B': 'Salesforce/codegen-16B-mono',
-}
-CODEGEN_MODELS_DTYPES = {model: torch.float16 for model in CODEGEN_MODELS_MAPPING.keys()}
-CODEGEN_MODELS_PARAMS = _infer_model_sizes(CODEGEN_MODELS_MAPPING)
-CODEGEN_MODELS_FAMILY = {model: 'codegen' for model in CODEGEN_MODELS_MAPPING.keys()}
-CODEGEN_MODELS_CONTEXT_SIZE = {model: 2048 for model in CODEGEN_MODELS_MAPPING.keys()}
-_register_model('CODEGEN')
-
-
-# Pretrained CodeGEN2 models
-CODEGEN2_MODELS_MAPPING = {
-    'codegen2-1B': 'Salesforce/codegen2-1B',
-    'codegen2-3.7B': 'Salesforce/codegen2-3_7B',
-    'codegen2-7B': 'Salesforce/codegen2-7B',
-    'codegen2-16B': 'Salesforce/codegen2-16B',
-    'codegen25-7B': 'Salesforce/codegen25-7B-mono',
-    'codegen25-7B-instruct': 'Salesforce/codegen25-7b-instruct',
-}
-CODEGEN2_MODELS_DTYPES = {model: torch.float16 for model in CODEGEN2_MODELS_MAPPING.keys()}
-CODEGEN2_MODELS_PARAMS = _infer_model_sizes(CODEGEN2_MODELS_MAPPING)
-CODEGEN2_MODELS_FAMILY = {
-    'codegen2-1B': 'codegen2',
-    'codegen2-3.7B': 'codegen2',
-    'codegen2-7B': 'codegen2',
-    'codegen2-16B': 'codegen2',
-    'codegen25-7B': 'codegen2.5',
-    'codegen25-7B-instruct': 'codegen2.5',
-}
-CODEGEN2_MODELS_CONTEXT_SIZE = {model: 2048 for model in CODEGEN2_MODELS_MAPPING.keys()}
-CODEGEN2_MODELS_VERSIONS = {
-    'codegen25-7B': {'transformers': '<=4.33.3', 'tokenizers': '<=0.13.3'},
-    'codegen25-7B-instruct': {'transformers': '<=4.33.3', 'tokenizers': '<=0.13.3'},
-}
-CODEGEN2_MODELS_ADDITIONAL_MODEL_KWARGS = {
-    'codegen2-1B': {'trust_remote_code': True, 'revision': 'main'},
-    'codegen2-3.7B': {'trust_remote_code': True, 'revision': 'main'},
-    'codegen2-7B': {'trust_remote_code': True, 'revision': 'main'},
-    'codegen2-16B': {'trust_remote_code': True, 'revision': 'main'},
-}
-CODEGEN2_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {
-    'codegen25-7B': {'trust_remote_code': True},
-    'codegen25-7B-instruct': {'trust_remote_code': True},
-}
-_register_model('CODEGEN2')
-
-
-# Pretrained Vicuna (1.3) models
-VICUNA_MODELS_MAPPING = {
-    'vicuna-7B': 'lmsys/vicuna-7b-v1.3',
-    'vicuna-13B': 'lmsys/vicuna-13b-v1.3',
-}
-VICUNA_MODELS_DTYPES = {model: torch.float16 for model in VICUNA_MODELS_MAPPING.keys()}
-VICUNA_MODELS_PARAMS = _infer_model_sizes(VICUNA_MODELS_MAPPING)
-VICUNA_MODELS_FAMILY = {model: 'vicuna1.3' for model in VICUNA_MODELS_MAPPING.keys()}
-VICUNA_MODELS_CONTEXT_SIZE = {model: 2048 for model in VICUNA_MODELS_MAPPING.keys()}
-# Fast llama tokenizers are buggy in current transformers versions
-# TODO: may need to be changed in future versions if they correct the bug
-VICUNA_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in VICUNA_MODELS_MAPPING.keys()}
-_register_model('VICUNA')
-
-
-# Pretrained llama-2 models
-LLAMA2_MODELS_MAPPING = {
-    'llama2-7B': 'meta-llama/Llama-2-7b-hf',
-    'llama2-13B': 'meta-llama/Llama-2-13b-hf',
-    'llama2-70B': 'meta-llama/Llama-2-70b-hf',
-    'llama2-7B-chat': 'meta-llama/Llama-2-7b-chat-hf',
-    'llama2-13B-chat': 'meta-llama/Llama-2-13b-chat-hf',
-    'llama2-70B-chat': 'meta-llama/Llama-2-70b-chat-hf',
-}
-LLAMA2_MODELS_DTYPES = {model: torch.float16 for model in LLAMA2_MODELS_MAPPING.keys()}
-LLAMA2_MODELS_PARAMS = _infer_model_sizes(LLAMA2_MODELS_MAPPING)
-LLAMA2_MODELS_FAMILY = {model: 'llama2' for model in LLAMA2_MODELS_MAPPING.keys()}
-LLAMA2_MODELS_CONTEXT_SIZE = {model: 4096 for model in LLAMA2_MODELS_MAPPING.keys()}
-# Fast llama tokenizers are buggy in current transformers versions
-# TODO: may need to be changed in future versions if they correct the bug
-LLAMA2_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in LLAMA2_MODELS_MAPPING.keys()}
-_register_model('LLAMA2')
-
-
-# Code-Llama models (based on llama2 models)
-CODE_LLAMA_MODELS_MAPPING = {
-    'code-llama-7B': 'codellama/CodeLlama-7b-hf',
-    'code-llama-13B': 'codellama/CodeLlama-13b-hf',
-    'code-llama-34B': 'codellama/CodeLlama-34b-hf',
-    'code-llama-70B': 'codellama/CodeLlama-70b-hf',
-    'code-llama-7B-python': 'codellama/CodeLlama-7b-Python-hf',
-    'code-llama-13B-python': 'codellama/CodeLlama-13b-Python-hf',
-    'code-llama-34B-python': 'codellama/CodeLlama-34b-Python-hf',
-    'code-llama-70B-python': 'codellama/CodeLlama-70b-Python-hf',
-    'code-llama-7B-instruct': 'codellama/CodeLlama-7b-Instruct-hf',
-    'code-llama-13B-instruct': 'codellama/CodeLlama-13b-Instruct-hf',
-    'code-llama-34B-instruct': 'codellama/CodeLlama-34b-Instruct-hf',
-    'code-llama-70B-instruct': 'codellama/CodeLlama-70b-Instruct-hf',
-}
-CODE_LLAMA_MODELS_DTYPES = {model: torch.bfloat16 for model in CODE_LLAMA_MODELS_MAPPING.keys()}
-CODE_LLAMA_MODELS_PARAMS = _infer_model_sizes(CODE_LLAMA_MODELS_MAPPING)
-CODE_LLAMA_MODELS_FAMILY = {model: 'code-llama' for model in CODE_LLAMA_MODELS_MAPPING.keys()}
-CODE_LLAMA_MODELS_CONTEXT_SIZE = {model: 4096 for model in CODE_LLAMA_MODELS_MAPPING.keys()}
-# Fast llama tokenizers are buggy in current transformers versions
-# TODO: may need to be changed in future versions if they correct the bug
-CODE_LLAMA_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in CODE_LLAMA_MODELS_MAPPING.keys()}
-CODE_LLAMA_MODELS_VERSIONS = {
-    'code-llama-70B': {'transformers': '>=4.37.1', 'tokenizers': '>=0.15.1'},
-    'code-llama-70B-python': {'transformers': '>=4.37.1', 'tokenizers': '>=0.15.1'},
-    'code-llama-70B-instruct': {'transformers': '>=4.37.1', 'tokenizers': '>=0.15.1'},
-}
-_register_model('CODE_LLAMA')
-
-
-# Mistral models
-MISTRAL_MODELS_MAPPING = {
-    'mistral-7B': 'mistralai/Mistral-7B-v0.1',
-    'mistral-7B-instruct': 'mistralai/Mistral-7B-Instruct-v0.1',
-}
-MISTRAL_MODELS_DTYPES = {model: torch.bfloat16 for model in MISTRAL_MODELS_MAPPING.keys()}
-MISTRAL_MODELS_PARAMS = _infer_model_sizes(MISTRAL_MODELS_MAPPING)
-MISTRAL_MODELS_FAMILY = {model: 'mistral' for model in MISTRAL_MODELS_MAPPING.keys()}
-MISTRAL_MODELS_CONTEXT_SIZE = {model: 8192 for model in MISTRAL_MODELS_MAPPING.keys()}
-MISTRAL_MODELS_VERSIONS = {model: {'transformers': '>=4.34.0', 'tokenizers': '>=0.14.0'} for model in MISTRAL_MODELS_MAPPING.keys()}
-MISTRAL_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in MISTRAL_MODELS_MAPPING.keys()}
-_register_model('MISTRAL')
-
-
-# Zephyr models
-ZEPHYR_MODELS_MAPPING = {
-    'zephyr-7B-alpha': 'HuggingFaceH4/zephyr-7b-alpha',
-    'zephyr-7B-beta': 'HuggingFaceH4/zephyr-7b-beta',
-}
-ZEPHYR_MODELS_DTYPES = {model: torch.bfloat16 for model in ZEPHYR_MODELS_MAPPING.keys()}
-ZEPHYR_MODELS_PARAMS = _infer_model_sizes(ZEPHYR_MODELS_MAPPING)
-ZEPHYR_MODELS_FAMILY = {model: 'zephyr' for model in ZEPHYR_MODELS_MAPPING.keys()}
-ZEPHYR_MODELS_CONTEXT_SIZE = {model: 8192 for model in ZEPHYR_MODELS_MAPPING.keys()}
-ZEPHYR_MODELS_VERSIONS = {
-    'zephyr-7B-alpha': {'transformers': '>=4.34.0', 'tokenizers': '>=0.14.0'},
-    'zephyr-7B-beta': {'transformers': '>=4.35.0', 'tokenizers': '>=0.14.0'},
-}
-ZEPHYR_MODELS_ADDITIONAL_TOKENIZER_KWARGS = {model: {'use_fast': False} for model in ZEPHYR_MODELS_MAPPING.keys()}
-_register_model('ZEPHYR')
+from textwiz.configs import (
+    ALL_MODELS_MAPPING,
+    ALL_MODELS_DTYPES,
+    ALL_MODELS_PARAMS,
+    ALL_MODELS_FAMILY,
+    ALL_MODELS_CONTEXT_SIZE,
+    ALL_MODELS_VERSIONS,
+    ALL_MODELS_ADDITIONAL_MODEL_KWARGS,
+    ALL_MODELS_ADDITIONAL_TOKENIZER_KWARGS,
+    ALL_MODELS_PURPOSE,
+)
 
 
 # Summarize all supported model names
 ALLOWED_MODELS = tuple(ALL_MODELS_MAPPING.keys())
+ALLOWED_CAUSAL_MODELS = (model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'causal')
+ALLOWED_EMBEDDING_MODELS = (model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'embedding')
 
 ALLOWED_DTYPES = (torch.float16, torch.bfloat16, torch.float32)
 
+# Mapping between purpose and transformer class
+BASE_MODEL_CLASS_MAPPING = {
+    'causal': AutoModelForCausalLM,
+    'embedding': AutoModel,
+}
 
 
 def get_model_params(model_name: str) -> float:
@@ -707,12 +345,15 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
             # Providing 'balanced' dispatch correctly with respect to the max_memory_map we provide
             device_map = 'balanced'
 
+    # Base class for loading
+    base_class = BASE_MODEL_CLASS_MAPPING[ALL_MODELS_PURPOSE[model_name]]
+
     # Load model
     # We first try with flash attention 2
     try:
-        model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
-                                                     device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                                     load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+        model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
+                                           device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
+                                           load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
         success = True
     except:
         success = False
@@ -720,18 +361,18 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     # Second try with Pytorch native sdpa (which may sometimes but not for all models also use flash attention 2)
     if not success:
         try:
-            model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='sdpa',
-                                                         device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                                         load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+            model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='sdpa',
+                                               device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
+                                               load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
             success = True
         except:
             success = False
 
     # Last try with BetterTransformer, which is the same as sdpa but with coverage for more models
     if not success:
-        model = AutoModelForCausalLM.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='eager', device_map=device_map,
-                                                     torch_dtype=dtype, load_in_8bit=quantization_8bits, load_in_4bit=quantization_4bits,
-                                                     low_cpu_mem_usage=True, **additional_kwargs)
+        model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='eager', device_map=device_map,
+                                           torch_dtype=dtype, load_in_8bit=quantization_8bits, load_in_4bit=quantization_4bits,
+                                           low_cpu_mem_usage=True, **additional_kwargs)
         # For some reason bettertransformer is supported for codegen2 models but makes them crash during the forward
         if not ('codegen2-' in model_name):
             # Convert to better transformer to use Pytorch optimizations if supported by the model

@@ -4,7 +4,7 @@ templates are especially not meant for conversations with the models, only for p
 memory of previous prompts.
 """
 
-from .loader import ALLOWED_MODELS
+from .loader import ALLOWED_CAUSAL_MODELS
 
 PROMPT_MODES = ('default', 'generation', 'infill', 'chat')
 
@@ -442,8 +442,8 @@ def get_prompt_template(model_name: str, mode: str = 'default') -> GenericPrompt
 
     """
 
-    if model_name not in ALLOWED_MODELS:
-        raise ValueError(f'The model name must be one of {*ALLOWED_MODELS,}.')
+    if model_name not in ALLOWED_CAUSAL_MODELS:
+        raise ValueError(f'The model name must be one of {*ALLOWED_CAUSAL_MODELS,}.')
     
     if mode not in PROMPT_MODES:
         raise ValueError(f'The mode for creating the prompt must be one of {*PROMPT_MODES,}')

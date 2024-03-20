@@ -563,8 +563,8 @@ def get_empty_conversation_template(model_name: str) -> GenericConversation:
 
     """
 
-    if model_name not in loader.ALLOWED_MODELS:
-        raise ValueError(f'The model name must be one of {*loader.ALLOWED_MODELS,}.')
+    if model_name not in loader.ALLOWED_CAUSAL_MODELS:
+        raise ValueError(f'The model name must be one of {*loader.ALLOWED_CAUSAL_MODELS,}.')
     
     # TODO: maybe change this way of obtaining the eos token for a given model as it forces to load the
     # tokenizer for nothing (maybe create a mapping from name to eos?). For now it is sufficient as 
@@ -598,8 +598,8 @@ def get_conversation_from_yaml_template(model_name: str, path: str) -> GenericCo
 
     """
 
-    if model_name not in loader.ALLOWED_MODELS:
-        raise ValueError(f'The model name must be one of {*loader.ALLOWED_MODELS,}.')
+    if model_name not in loader.ALLOWED_CAUSAL_MODELS:
+        raise ValueError(f'The model name must be one of {*loader.ALLOWED_CAUSAL_MODELS,}.')
     
     # TODO: maybe change this way of obtaining the eos token for a given model as it forces to load the
     # tokenizer for nothing (maybe create a mapping from name to eos?). For now it is sufficient as 
