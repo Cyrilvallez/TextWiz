@@ -59,7 +59,7 @@ def _register_config(config_name: str):
         _description_
     """
 
-    mod = importlib.import_module('.' + config_name, package='textwiz.configs')
+    mod = importlib.import_module('.' + config_name, package=__package__)
 
     required_params = ('ALL_MODELS_MAPPING', 'ALL_MODELS_DTYPES', 'ALL_MODELS_PARAMS', 'ALL_MODELS_FAMILY',
                        'ALL_MODELS_CONTEXT_SIZE', 'ALL_MODELS_VERSIONS', 'ALL_MODELS_ADDITIONAL_MODEL_KWARGS',

@@ -10,7 +10,7 @@ def _register_model(filename: str):
         Name of the file containing the model family parameters.
     """
 
-    mod = importlib.import_module('.' + filename, package='textwiz.configs.causal')
+    mod = importlib.import_module('.' + filename, package=__package__)
 
     required_params = ('MODELS_MAPPING', 'MODELS_DTYPES', 'MODELS_PARAMS', 'MODELS_FAMILY', 'MODELS_CONTEXT_SIZE')
     optional_params = ('MODELS_VERSIONS', 'MODELS_ADDITIONAL_MODEL_KWARGS', 'MODELS_ADDITIONAL_TOKENIZER_KWARGS')
