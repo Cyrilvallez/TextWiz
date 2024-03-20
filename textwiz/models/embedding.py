@@ -87,7 +87,7 @@ class HFEmbeddingModel(HFBaseModel):
             max_batch_size = input_length
 
         current_index = 0
-        final_output = torch.tensor([], device='cpu', requires_grad=False)
+        final_output = torch.tensor([], dtype=torch.float32, device='cpu', requires_grad=False)
         while True:
             
             batch_size = min(max_batch_size, input_length-current_index)
