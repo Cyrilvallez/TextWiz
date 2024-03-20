@@ -8,9 +8,9 @@ from typing import TypeVar
 from transformers import TextIteratorStreamer
 import gradio as gr
 
-from .generation import HFModel
+from ..models import HFCausalModel
 from .streamer import TextContinuationStreamer
-from .conversation_template import GenericConversation
+from ..templates import GenericConversation
 
 # Define return types for our yield-only generators
 T = TypeVar('T')
@@ -21,13 +21,13 @@ generator = Generator[T, None, None]
 TIMEOUT = 20
 
 
-def text_generation(model: HFModel, prompt: str, max_new_tokens: int, do_sample: bool, top_k: int, top_p: float,
+def text_generation(model: HFCausalModel, prompt: str, max_new_tokens: int, do_sample: bool, top_k: int, top_p: float,
                     temperature: float, use_seed: bool, seed: int, **kwargs) -> generator[str]:
     """Text generation with `model`. This is a generator yielding tokens as they are generated.
 
     Parameters
     ----------
-    model : HFModel
+    model : HFCausalModel
         The model to use for generation.
     prompt : str
         The prompt to the model.
@@ -89,14 +89,14 @@ def text_generation(model: HFModel, prompt: str, max_new_tokens: int, do_sample:
 
 
 
-def chat_generation(model: HFModel, conversation: GenericConversation, prompt: str, max_new_tokens: int,
+def chat_generation(model: HFCausalModel, conversation: GenericConversation, prompt: str, max_new_tokens: int,
                     do_sample: bool,top_k: int, top_p: float, temperature: float, use_seed: bool, seed: int,
                     **kwargs) -> generator[tuple[str, GenericConversation, list[list]]]:
     """Chat generation with `model`. This is a generator yielding tokens as they are generated.
 
     Parameters
     ----------
-    model : HFModel
+    model : HFCausalModel
         The model to use for generation.
     conversation : GenericConversation
         Current conversation. This is the value inside a gr.State instance.
@@ -167,14 +167,14 @@ def chat_generation(model: HFModel, conversation: GenericConversation, prompt: s
 
 
 
-def continue_generation(model: HFModel, conversation: GenericConversation, additional_max_new_tokens: int,
+def continue_generation(model: HFCausalModel, conversation: GenericConversation, additional_max_new_tokens: int,
                         do_sample: bool, top_k: int, top_p: float, temperature: float, use_seed: bool,
                         seed: int, **kwargs) -> generator[tuple[GenericConversation, list[list]]]:
     """Continue the last turn of the `model` output. This is a generator yielding tokens as they are generated.
 
     Parameters
     ----------
-    model : HFModel
+    model : HFCausalModel
         The model to use for generation.
     conversation : GenericConversation
         Current conversation. This is the value inside a gr.State instance.
@@ -251,14 +251,14 @@ def continue_generation(model: HFModel, conversation: GenericConversation, addit
 
 
 
-def retry_chat_generation(model: HFModel, conversation: GenericConversation, max_new_tokens: int, do_sample: bool,
+def retry_chat_generation(model: HFCausalModel, conversation: GenericConversation, max_new_tokens: int, do_sample: bool,
                           top_k: int, top_p: float, temperature: float, use_seed: bool,
                           seed: int, **kwargs) -> generator[tuple[GenericConversation, list[list]]]:
     """Regenerate the last turn of the conversation. This is a generator yielding tokens as they are generated.
 
     Parameters
     ----------
-    model : HFModel
+    model : HFCausalModel
         The model to use for generation.
     conversation : GenericConversation
         Current conversation. This is the value inside a gr.State instance.

@@ -1,6 +1,6 @@
 from transformers import TextIteratorStreamer, AutoTokenizer
 
-from .constants import SENTENCEPIECE_CHARACTER
+from ..helpers.constants import SENTENCEPIECE_CHARACTER
 
 class TextContinuationStreamer(TextIteratorStreamer):
     """Same as `TextIteratorStreamer`, but add the first space that does not get added by default during 

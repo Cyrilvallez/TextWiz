@@ -1,15 +1,14 @@
 # Define easy entry points for most useful features
-from .generation import HFModel
+from .models import HFCausalModel, HFEmbeddingModel
 from .loader import load_model, load_tokenizer, load_model_and_tokenizer, estimate_model_gpu_footprint
-from .conversation_template import get_empty_conversation_template, get_conversation_from_yaml_template
-from .prompt_template import get_prompt_template
+from .templates import get_prompt_template, get_empty_conversation_template, get_conversation_from_yaml_template
 from .stopping import StoppingType, create_stopping_criteria, post_process_sequences
-from .code_parser import PythonParser
-from .streamer import TextContinuationStreamer
+from .parsers import PythonParser
+from .webapp import TextContinuationStreamer
 # import it here so that the warnings are suppressed when doing `import textwiz`
-from . import warnings_suppressor
+from .helpers import warnings_suppressor
 # also directly import some of the submodules for convenience and auto-complete
-from . import loader, conversation_template, prompt_template
+from . import loader, templates
 
 
 __version__ = '0.4.0'
@@ -90,8 +89,8 @@ assert set(loader.ALLOWED_MODELS) == set(SMALL_MODELS + LARGE_MODELS), 'We are s
 
 
 # Model with non-default prompt template
-SMALL_MODELS_SPECIAL_PROMPT = tuple(model for model in SMALL_MODELS if model in prompt_template.PROMPT_MAPPING.keys())
-LARGE_MODELS_SPECIAL_PROMPT = tuple(model for model in LARGE_MODELS if model in prompt_template.PROMPT_MAPPING.keys())
+SMALL_MODELS_SPECIAL_PROMPT = tuple(model for model in SMALL_MODELS if model in templates.prompt_template.PROMPT_MAPPING.keys())
+LARGE_MODELS_SPECIAL_PROMPT = tuple(model for model in LARGE_MODELS if model in templates.prompt_template.PROMPT_MAPPING.keys())
 
 
 
@@ -119,5 +118,5 @@ assert set(GOOD_CODERS) == set(SMALL_GOOD_CODERS + LARGE_GOOD_CODERS), 'We are s
 
 
 # Model that we decided to keep for further code benchmarks with non-default prompt template
-SMALL_GOOD_CODERS_SPECIAL_PROMPT = tuple(model for model in SMALL_GOOD_CODERS if model in prompt_template.PROMPT_MAPPING.keys())
-LARGE_GOOD_CODERS_SPECIAL_PROMPT = tuple(model for model in LARGE_GOOD_CODERS if model in prompt_template.PROMPT_MAPPING.keys())
+SMALL_GOOD_CODERS_SPECIAL_PROMPT = tuple(model for model in SMALL_GOOD_CODERS if model in templates.prompt_template.PROMPT_MAPPING.keys())
+LARGE_GOOD_CODERS_SPECIAL_PROMPT = tuple(model for model in LARGE_GOOD_CODERS if model in templates.prompt_template.PROMPT_MAPPING.keys())

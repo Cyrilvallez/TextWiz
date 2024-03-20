@@ -1,7 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 
-from . import utils
+from ..helpers import utils
 
 
 class CodeParser(ABC):

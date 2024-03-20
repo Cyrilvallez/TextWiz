@@ -4,8 +4,8 @@ This file contains the conversation templates for the models we use.
 import uuid
 import copy
 
-from . import loader
-from . import utils
+from .. import loader
+from ..helpers import utils
 
 
 class GenericConversation(object):
