@@ -3,6 +3,7 @@ import numpy as np
 
 from .base import HFBaseModel
 from .. import loader
+from ..helpers import utils
 
 
 class HFEmbeddingModel(HFBaseModel):
@@ -46,17 +47,66 @@ class HFEmbeddingModel(HFBaseModel):
             return last_hidden_states[:, sequence_lengths, :]
 
     
-    def embed(self, inputs: list[str] | str, instruction: str | None = None) -> np.ndarray:
+    def embed(self, inputs: list[str] | str, instruction: str | None = None,
+              max_batch_size: int | None = None) -> np.ndarray:
+        """Return the embeddings for the given `inputs`.
 
-        # TODO: assert input size is small enough to not truncate
+        Parameters
+        ----------
+        inputs : list[str] | str
+            The input text (or batch of texts)
+        instruction : str | None, optional
+            _description_, by default None
+        max_batch_size : int | None, optional
+            If given, will use this as the maximum batch size for a single model pass. By default `None`, i.e
+            no maximum.
+
+        Returns
+        -------
+        np.ndarray
+            The embeddings.
+        """
+
+        # Tokenize a first time to check input length
         input_dict = self.tokenizer(inputs, padding=True, return_tensors="pt")
+        # In this case raise error
+        if input_dict['input_ids'].shape[1] > self.get_context_size():
+            raise ValueError(('At least one of the inputs is longer than the maximum allowed size. Truncate it in '
+                              'smaller chunks, then embed those.'))
+        
+        input_ids = input_dict['input_ids']
+        attention_mask = input_dict['attention_mask']
+        input_length = input_ids.shape[0]
 
         if torch.cuda.is_available():
-            input_dict['input_ids'] = input_dict['input_ids'].cuda()
-            input_dict['attention_mask'] = input_dict['attention_mask'].cuda()
+            input_ids = input_ids.to(device=self.input_device)
+            attention_mask = attention_mask.to(device=self.input_device)
 
-        with torch.no_grad():
-            outputs = self.model(**input_dict)
-            embeddings = self.last_token_pool(outputs.last_hidden_state, input_dict['attention_mask'])
+        # No maximum -> will pass all inputs as a single batch
+        if max_batch_size is None:
+            max_batch_size = input_length
 
-        return embeddings.cpu().numpy()
+        current_index = 0
+        final_output = torch.tensor([], device='cpu', requires_grad=False)
+        while True:
+            
+            batch_size = min(max_batch_size, input_length-current_index)
+            _slice = slice(current_index, current_index+batch_size)
+
+            with torch.no_grad():
+                outputs = self.model(input_ids=input_ids[_slice, :], attention_mask=attention_mask[_slice, :])
+                embeddings = self.last_token_pool(outputs.last_hidden_state, attention_mask[_slice, :])
+
+            # Concatenate current batch to final vector
+            final_output = torch.cat([final_output, embeddings.cpu()], dim=0)
+
+            current_index += batch_size
+            if current_index >= input_length:
+                break
+
+        return final_output.numpy()
+    
+
+    @utils.copy_docstring_and_signature(embed)
+    def __call__(self, *args, **kwargs):
+        return self.embed(*args, **kwargs)
