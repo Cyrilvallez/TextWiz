@@ -44,7 +44,9 @@ class HFEmbeddingModel(HFBaseModel):
             return last_hidden_states[:, -1, :]
         else:
             sequence_lengths = attention_mask.sum(dim=1) - 1
-            return last_hidden_states[:, sequence_lengths, :]
+            batch_size = last_hidden_states.shape[0]
+            device = last_hidden_states.device
+            return last_hidden_states[torch.arange(batch_size, device=device), sequence_lengths, :]
 
     
     def embed(self, inputs: list[str] | str, instruction: str | None = None,
