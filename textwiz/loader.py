@@ -7,7 +7,7 @@ from packaging import version
 import torch
 from transformers import AutoModelForCausalLM, AutoModel, AutoTokenizer
 
-from textwiz.configs import (
+from .configs import (
     ALL_MODELS_MAPPING,
     ALL_MODELS_DTYPES,
     ALL_MODELS_PARAMS,
