@@ -18,7 +18,7 @@ a model along its tokenizer and many more model-specific parameters and configur
 ```python
 import textwiz
 
-model = textwiz.HFModel('mistral-7B')
+model = textwiz.HFCausalModel('mistral-7B')
 ```
 
 By default, it will use as many GPUs as needed (if you have any on your system), and put the model on it.
@@ -41,7 +41,7 @@ random, and two calls with the same prompt are very likely to yield different re
 You can also create a conversation with a model. By default, the correct conversation template is always used depending on the model you use:
 
 ```python
-model = textwiz.HFModel('zephyr-7B-beta')
+model = textwiz.HFCausalModel('zephyr-7B-beta')
 prompt = 'Hello, who are you?'
 conv = model.generate_conversation(prompt, conv_history=None)
 

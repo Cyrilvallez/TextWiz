@@ -9,6 +9,8 @@ MODELS_MAPPING = {
 MODELS_DTYPES = {model: torch.bfloat16 for model in MODELS_MAPPING.keys()}
 MODELS_PARAMS = {model: 7 for model in MODELS_MAPPING.keys()}
 MODELS_FAMILY = {model: 'mistral' for model in MODELS_MAPPING.keys()}
+
+# We want to stay inside the context sliding window for maximum embedding accuracy
 MODELS_CONTEXT_SIZE = {model: 4096 for model in MODELS_MAPPING.keys()}
 
 

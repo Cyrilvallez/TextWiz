@@ -22,8 +22,8 @@ from .configs import (
 
 # Summarize all supported model names
 ALLOWED_MODELS = tuple(ALL_MODELS_MAPPING.keys())
-ALLOWED_CAUSAL_MODELS = (model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'causal')
-ALLOWED_EMBEDDING_MODELS = (model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'embedding')
+ALLOWED_CAUSAL_MODELS = tuple(model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'causal')
+ALLOWED_EMBEDDING_MODELS = tuple(model for model in ALL_MODELS_MAPPING.keys() if ALL_MODELS_PURPOSE[model] == 'embedding')
 
 ALLOWED_DTYPES = (torch.float16, torch.bfloat16, torch.float32)
 
