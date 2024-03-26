@@ -64,15 +64,14 @@ class GenericConversation(object):
         
         if 'few_shot_examples' in data.keys():
             few_shot_examples = data['few_shot_examples']
-            user_few_shot = ['']*len(few_shot_examples)
-            model_few_shot = ['']*len(few_shot_examples)
+            user_few_shot = []
+            model_few_shot = []
 
             for turn in few_shot_examples:
-                if sorted(list(turn.keys())) != ['index', 'model', 'user']:
+                if sorted(list(turn.keys())) != ['model', 'user']:
                     raise RuntimeError('The format of the yaml file is incorrect.')
-                k = turn['index']
-                user_few_shot[k] = turn['user']
-                model_few_shot[k] = turn['model']
+                user_few_shot.append(turn['user'])
+                model_few_shot.append(turn['model'])
 
             conv.set_few_shot_examples(user_few_shot, model_few_shot)
 
