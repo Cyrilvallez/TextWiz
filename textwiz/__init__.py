@@ -1,7 +1,7 @@
 # Define easy entry points for most useful features
 from .models import HFCausalModel, HFEmbeddingModel
 from .loader import load_model, load_tokenizer, load_model_and_tokenizer, estimate_model_gpu_footprint
-from .templates import get_prompt_template, get_empty_conversation_template, get_conversation_from_yaml_template
+from .templates import GenericConversation, GenericPromptTemplate, get_prompt_template, get_empty_conversation_template, get_conversation_from_yaml_template
 from .stopping import StoppingType, create_stopping_criteria, post_process_sequences
 from .parsers import PythonParser
 from .webapp import TextContinuationStreamer
