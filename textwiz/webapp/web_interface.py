@@ -292,53 +292,17 @@ def retry_chat_generation(model: HFCausalModel, conversation: GenericConversatio
         gr.Warning('You cannot retry generation on an empty last turn')
         yield conversation, conversation.to_gradio_format()
         return
-    
-    if not use_seed:
-        seed = None
 
     # Remove last turn
     prompt = conversation.user_history_text[-1]
     _ = conversation.user_history_text.pop(-1)
     _ = conversation.model_history_text.pop(-1)
 
-    # To show text as it is being generated
-    streamer = TextIteratorStreamer(model.tokenizer, skip_prompt=True, timeout=TIMEOUT, skip_special_tokens=True)
-
-    conv_copy = copy.deepcopy(conversation)
-    conv_copy.append_user_message(prompt)
-    
-    # We need to launch a new thread to get text from the streamer in real-time as it is being generated. We
-    # use an executor because it makes it easier to catch possible exceptions
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        # This will update `conversation` in-place
-        future = executor.submit(model.generate_conversation, prompt, system_prompt=None, conv_history=conversation,
-                                 max_new_tokens=max_new_tokens, do_sample=do_sample, top_k=top_k, top_p=top_p,
-                                 temperature=temperature, seed=seed, truncate_if_conv_too_long=True, streamer=streamer,
-                                 **kwargs)
-        
-        # Get results from the streamer and yield it
-        try:
-            generated_text = ''
-            for new_text in streamer:
-                generated_text += new_text
-                # Update model answer (on a copy of the conversation) as it is being generated
-                conv_copy.model_history_text[-1] = generated_text
-                # The first output is an empty string to clear the input box, the second is the format output
-                # to use in a gradio chatbot component
-                yield conv_copy, conv_copy.to_gradio_format()
-
-        # If for some reason the queue (from the streamer) is still empty after timeout, we probably
-        # encountered an exception
-        except queue.Empty:
-            e = future.exception()
-            if e is not None:
-                raise gr.Error(f'The following error happened during generation: {repr(e)}')
-            else:
-                raise gr.Error(f'Generation timed out (no new tokens were generated after {TIMEOUT} s)')
-    
-    
-    # Update the chatbot with the real conversation (which may be slightly different due to postprocessing)
-    yield conversation, conversation.to_gradio_format()
+    # Yield value from chat_generation, but remove first value
+    for _, conv, chatbot in chat_generation(model=model, conversation=conversation, prompt=prompt, max_new_tokens=max_new_tokens,
+                                            do_sample=do_sample, top_k=top_k, top_p=top_p, temperature=temperature,
+                                            use_seed=use_seed, seed=seed, **kwargs):
+        yield conv, chatbot
 
 
 
