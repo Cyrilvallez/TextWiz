@@ -298,7 +298,7 @@ def retry_chat_generation(model: HFCausalModel, conversation: GenericConversatio
     _ = conversation.user_history_text.pop(-1)
     _ = conversation.model_history_text.pop(-1)
 
-    # Yield value from chat_generation, but remove first value
+    # Yield from chat_generation, but remove first value
     for _, conv, chatbot in chat_generation(model=model, conversation=conversation, prompt=prompt, max_new_tokens=max_new_tokens,
                                             do_sample=do_sample, top_k=top_k, top_p=top_p, temperature=temperature,
                                             use_seed=use_seed, seed=seed, **kwargs):
