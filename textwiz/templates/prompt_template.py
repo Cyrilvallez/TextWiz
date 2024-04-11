@@ -453,6 +453,7 @@ PROMPT_MAPPING = {
     'zephyr-7B-beta': ZephyrPromptTemplate,
 
     # Command
+    'command-r': CommandPromptTemplate,
     'command-r-plus': CommandPromptTemplate,
 }
 

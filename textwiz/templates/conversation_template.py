@@ -588,6 +588,7 @@ CONVERSATION_MAPPING = {
     'zephyr-7B-beta': ZephyrConversation,
 
     # Command
+    'command-r': CommandConversation,
     'command-r-plus': CommandConversation,
 }
 
