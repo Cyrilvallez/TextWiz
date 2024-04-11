@@ -515,6 +515,49 @@ class ZephyrConversation(GenericConversation):
     
 
 
+# reference: https://huggingface.co/CohereForAI/c4ai-command-r-plus
+class CommandConversation(GenericConversation):
+
+    def __init__(self, eos_token: str):
+
+        super().__init__(eos_token)
+
+        # Override value
+        self.add_space_to_continuation_prompt = False
+
+        self.system_prompt = (
+            "You are Command-R, a brilliant, sophisticated, AI-assistant trained to assist human users by providing "
+            "thorough responses. You are trained by Cohere."
+        )
+
+        self.system_token = '<|SYSTEM_TOKEN|>'
+        self.user_token = '<|USER_TOKEN|>'
+        self.assistant_token = '<|CHATBOT_TOKEN|>'
+        self.start_turn = '<|START_OF_TURN_TOKEN|>'
+        self.end_turn = '<|END_OF_TURN_TOKEN|>'
+
+
+    def get_prompt(self) -> str:
+        """Format the prompt representing the conversation that we will feed to the tokenizer.
+        """
+
+        if self.system_prompt.strip() != '':
+            prompt = self.start_turn + self.system_token + self.system_prompt.strip() + self.end_turn
+        else:
+            prompt = ''
+
+        for user_message, model_response in self:
+
+            prompt += self.start_turn + self.user_token + user_message.strip() + self.end_turn
+
+            if model_response is not None:
+                prompt += self.start_turn + self.assistant_token + model_response.strip() + self.end_turn
+            else:
+                prompt += self.start_turn + self.assistant_token
+
+        return prompt
+
+
 # Mapping from model name to conversation class name
 CONVERSATION_MAPPING = {
     # StarChat
@@ -543,6 +586,9 @@ CONVERSATION_MAPPING = {
     # Zephyr
     'zephyr-7B-alpha': ZephyrConversation,
     'zephyr-7B-beta': ZephyrConversation,
+
+    # Command
+    'command-r-plus': CommandConversation,
 }
 
 

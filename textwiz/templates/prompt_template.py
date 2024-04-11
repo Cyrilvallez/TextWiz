@@ -372,6 +372,36 @@ class ZephyrPromptTemplate(GenericPromptTemplate):
             formatted_prompt += model_context
 
         return formatted_prompt
+    
+
+# reference: https://huggingface.co/CohereForAI/c4ai-command-r-plus
+class CommandPromptTemplate(GenericPromptTemplate):
+
+    def __init__(self, mode: str = 'default'):
+
+        super().__init__(mode)
+        self.default_mode = 'chat'
+
+        self.system_token = '<|SYSTEM_TOKEN|>'
+        self.user_token = '<|USER_TOKEN|>'
+        self.assistant_token = '<|CHATBOT_TOKEN|>'
+        self.start_turn = '<|START_OF_TURN_TOKEN|>'
+        self.end_turn = '<|END_OF_TURN_TOKEN|>'
+
+
+    def format_chat(self, prompt: str, model_context: str = '', system_prompt: str = '') -> str:
+
+        if system_prompt.strip() != '':
+            formatted_prompt = self.start_turn + self.system_token + system_prompt.strip() + self.end_turn
+        else:
+            formatted_prompt = ''
+
+        formatted_prompt += self.start_turn + self.user_token + prompt.strip() + self.end_turn + self.start_turn + self.assistant_token
+
+        if model_context != '':
+            formatted_prompt += model_context
+
+        return formatted_prompt
 
     
 
@@ -421,6 +451,9 @@ PROMPT_MAPPING = {
     # Zephyr
     'zephyr-7B-alpha': ZephyrPromptTemplate,
     'zephyr-7B-beta': ZephyrPromptTemplate,
+
+    # Command
+    'command-r-plus': CommandPromptTemplate,
 }
 
 
