@@ -372,6 +372,31 @@ class ZephyrPromptTemplate(GenericPromptTemplate):
             formatted_prompt += model_context
 
         return formatted_prompt
+
+
+# reference: https://huggingface.co/HuggingFaceH4/zephyr-7b-beta
+class StarlingPromptTemplate(GenericPromptTemplate):
+
+    def __init__(self, mode: str = 'default'):
+
+        super().__init__(mode)
+        self.default_mode = 'chat'
+
+        self.user_token = 'GPT4 Correct User:'
+        self.assistant_token = 'GPT4 Correct Assistant:'
+        self.end_turn = '<|end_of_turn|>'
+
+
+    def format_chat(self, prompt: str, model_context: str = '', system_prompt: str = '') -> str:
+
+        # If we are not using system prompt, do not add the template formatting with empty prompt
+
+        formatted_prompt = self.user_token + ' ' + system_prompt.strip() + ' ' + prompt.strip() + self.end_turn + self.assistant_token
+
+        if model_context != '':
+            formatted_prompt += ' ' + model_context
+
+        return formatted_prompt
     
 
 # reference: https://huggingface.co/CohereForAI/c4ai-command-r-plus
@@ -446,11 +471,15 @@ PROMPT_MAPPING = {
     'code-llama-70B-instruct': CodeLlama70BInstructPromptTemplate,
 
     # Mistral
-    'mistral-7B-instruct': MistralPromptTemplate,
+    'mistral-7B-instruct-v1': MistralPromptTemplate,
+    'mistral-7B-instruct-v2': MistralPromptTemplate,
 
     # Zephyr
     'zephyr-7B-alpha': ZephyrPromptTemplate,
     'zephyr-7B-beta': ZephyrPromptTemplate,
+
+    # Starling
+    'starling-7B-beta': StarlingPromptTemplate,
 
     # Command
     'command-r': CommandPromptTemplate,

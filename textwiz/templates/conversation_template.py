@@ -515,6 +515,47 @@ class ZephyrConversation(GenericConversation):
     
 
 
+# reference: https://huggingface.co/Nexusflow/Starling-LM-7B-beta/tree/main
+class StarlingConversation(GenericConversation):
+
+    def __init__(self, eos_token: str):
+
+        super().__init__(eos_token)
+
+        # Override value
+        self.add_space_to_continuation_prompt = True
+
+        self.system_prompt = (
+            "Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, "
+            "unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity."
+        )
+
+        self.user_token = 'GPT4 Correct User:'
+        self.assistant_token = 'GPT4 Correct Assistant:'
+        self.end_turn = '<|end_of_turn|>'
+
+
+    def get_prompt(self) -> str:
+        """Format the prompt representing the conversation that we will feed to the tokenizer.
+        """
+
+        for i, (user_message, model_response) in enumerate(self):
+
+            # System prompt embedded in first user interaction
+            if i == 0:
+                prompt += self.user_token + ' ' + self.system_prompt.strip() + ' ' + user_message.strip() + self.end_turn
+            else:
+                prompt += self.user_token + ' ' + user_message.strip() + self.end_turn
+
+            if model_response is not None:
+                prompt += self.assistant_token + ' ' + model_response.strip() + self.end_turn
+            else:
+                prompt += self.assistant_token
+
+        return prompt
+    
+
+
 # reference: https://huggingface.co/CohereForAI/c4ai-command-r-plus
 class CommandConversation(GenericConversation):
 
@@ -581,11 +622,15 @@ CONVERSATION_MAPPING = {
     'code-llama-70B-instruct': CodeLlama70BConversation,
 
     # Mistral
-    'mistral-7B-instruct': MistralConversation,
+    'mistral-7B-instruct-v1': MistralConversation,
+    'mistral-7B-instruct-v2': MistralConversation,
 
     # Zephyr
     'zephyr-7B-alpha': ZephyrConversation,
     'zephyr-7B-beta': ZephyrConversation,
+
+    # Starling
+    'starling-7B-beta': StarlingConversation,
 
     # Command
     'command-r': CommandConversation,
