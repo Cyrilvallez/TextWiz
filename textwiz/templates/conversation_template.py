@@ -539,6 +539,8 @@ class StarlingConversation(GenericConversation):
         """Format the prompt representing the conversation that we will feed to the tokenizer.
         """
 
+        prompt = ''
+
         for i, (user_message, model_response) in enumerate(self):
 
             # System prompt embedded in first user interaction
