@@ -479,6 +479,7 @@ PROMPT_MAPPING = {
     'zephyr-7B-beta': ZephyrPromptTemplate,
 
     # Starling
+    'starling-7B-alpha': StarlingPromptTemplate,
     'starling-7B-beta': StarlingPromptTemplate,
 
     # Command

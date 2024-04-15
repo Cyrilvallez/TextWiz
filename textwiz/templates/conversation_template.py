@@ -632,6 +632,7 @@ CONVERSATION_MAPPING = {
     'zephyr-7B-beta': ZephyrConversation,
 
     # Starling
+    'starling-7B-alpha': StarlingConversation,
     'starling-7B-beta': StarlingConversation,
 
     # Command
