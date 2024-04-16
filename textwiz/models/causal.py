@@ -34,8 +34,8 @@ class HFCausalModel(HFBaseModel):
                  dtype: torch.dtype | None = None, max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8,
                  device_map: dict | str | None = None, gpu_rank: int = 0):
         
-        if model_name not in loader.ALLOWED_CAUSAL_MODELS:
-            raise ValueError(f'The model name must be one of {*loader.ALLOWED_CAUSAL_MODELS,}.')
+        # Check name against only causal models
+        loader.check_model_name(model_name, loader.ALLOWED_CAUSAL_MODELS)
         
         super().__init__(model_name, quantization_8bits, quantization_4bits, dtype, max_fraction_gpu_0,
                          max_fraction_gpus, device_map, gpu_rank)
