@@ -52,7 +52,7 @@ def check_model_name(model_name: str, available_models: list[str] | tuple[str] =
         if len(closest_match) > 0:
             raise ValueError(f'The model name you provided is invalid. Perhaps you meant "{closest_match[0]}"?')
         else:
-            raise ValueError(f'The model name you provided is invalid.') 
+            raise ValueError(f'The model name you provided is invalid and we could not find any close match.') 
     else:
         return
 
