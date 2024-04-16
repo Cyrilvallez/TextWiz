@@ -11,7 +11,7 @@ from .helpers import warnings_suppressor
 from . import loader, templates
 
 
-__version__ = '0.5.0'
+__version__ = '0.6.0'
 
 
 def is_chat_model(model_name: str) -> bool:
