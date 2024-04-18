@@ -131,8 +131,8 @@ if __name__ == '__main__':
                         help='If given, will estimate the memory footprint of the model quantized to int8.')
     parser.add_argument('--int4', action='store_true',
                         help='If given, will estimate the memory footprint of the model quantized to int4.')
-    parser.add_argument('--N', type=int, default=10,
-                        help='The number of time to repeat each computation for accurate estimation. By default 10.')
+    parser.add_argument('--N', type=int, default=5,
+                        help='The number of time to repeat each computation for accurate estimation. By default 5.')
     
     args = parser.parse_args()
     int8 = args.int8
@@ -155,7 +155,20 @@ if __name__ == '__main__':
 
     # Create the commands to run
     gpu_footprints = textwiz.estimate_number_of_gpus(models, int8, int4)
-    commands = [f'python3 -u memory_estimator.py {model} --N {N}' for model in models]
+    commands = []
+    for model in models:
+        command = f'python3 -u memory_estimator.py {model} --N {N}'
+
+        if model == 'command-r-plus':
+            command += ' --max_gpu_0 0.9 --max_gpus 0.9'
+
+        if model == 'bloom-176B':
+            command += ' --max_gpu_0 0.95 --max_gpus 0.95'
+            if not (int8 or int4):
+                command += ' --int8'
+
+        commands.append(command)
+
     if int8:
         commands = [c + ' --int8' for c in commands]
     if int4:

@@ -35,13 +35,13 @@ def is_chat_model(model_name: str) -> bool:
     return template.default_mode == 'chat'
 
 
-def estimate_number_of_gpus(models: list[str], quantization_8bits: bool = False, quantization_4bits: bool = False,
+def estimate_number_of_gpus(models: list[str] | str, quantization_8bits: bool = False, quantization_4bits: bool = False,
                             max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8) -> list[int]:
     """Estimate the mumber of gpus needed to run each of the `models` correctly.
 
     Parameters
     ----------
-    models : list[str]
+    models : list[str] | str
         The models.
     quantization_8bits : bool
         Whether the model will be loaded in 8 bits mode, by default False.
@@ -60,6 +60,9 @@ def estimate_number_of_gpus(models: list[str], quantization_8bits: bool = False,
 
     # Import it here because we do not want it as part as the package namespace
     import warnings
+
+    if isinstance(models, str):
+        models = [models]
     
     model_footprints = []
     for model in models:
