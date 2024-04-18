@@ -248,7 +248,7 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
     # We go until 8192 tokens maximum for this benchmark (more tokens are rarely used)
     max_input_size = min(model.get_context_size(), 8192)
     # select context sizes to use depending on model max context
-    input_sizes = np.linspace(32, max_input_size - 32, num=20, endpoint=True, dtype=int)
+    input_sizes = np.linspace(32, max_input_size - 32, num=20, endpoint=True, dtype=int).tolist()
 
     scale_mode = []
 
@@ -281,7 +281,7 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
             results.append(max_peak)
 
         # Take the mean value of the N_repeat runs for better estimation
-        model_memory_consumption[input_size] = np.mean(results)
+        model_memory_consumption[int(input_size)] = np.mean(results)
 
         # Estimate the size of the past key values compared to the memory needed to compute them the first time
         # We only need a raw estimate, so we do it only once instead of N_repeat times
