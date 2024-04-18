@@ -14,7 +14,7 @@
 eval "$(conda shell.bash hook)"
 
 # Activate (local) env
-conda activate llm
+conda activate textwiz
 
 python3 -u memory_estimator_wrapper.py "$@"
 
