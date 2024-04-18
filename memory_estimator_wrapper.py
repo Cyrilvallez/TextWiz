@@ -3,8 +3,12 @@ import time
 import shlex
 import sys
 import argparse
+import os
+from datetime import date
 
 import torch
+import transformers
+import flash_attn
 
 import textwiz
 
@@ -173,6 +177,18 @@ if __name__ == '__main__':
         commands = [c + ' --int8' for c in commands]
     if int4:
         commands = [c + ' --int4' for c in commands]
+
+    # Save infos about the benchmark
+    benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', 'infos.json')
+    infos = {
+        'date': str(date.today()),
+        'GPU_type': 'A100 40GB',
+        'transformers_version': transformers.__version__,
+        'textwiz_version': textwiz.__version__,
+        'torch_version': torch.__version__,
+        'flash_attn_version': flash_attn.__version__,
+    }
+    textwiz.helpers.utils.save_json(infos, benchmark_info_filename)
     
     t0 = time.time()
 
