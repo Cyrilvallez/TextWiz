@@ -158,20 +158,24 @@ if __name__ == '__main__':
     print(f'Launching computations with {num_gpus} gpus available.')
 
     # Create the commands to run
-    gpu_footprints = textwiz.estimate_number_of_gpus(models, int8, int4)
+    gpu_footprints = []
     commands = []
     for model in models:
         command = f'python3 -u memory_estimator.py {model} --N {N}'
+        footprint = textwiz.estimate_number_of_gpus(model, int8, int4)[0]
 
         if model == 'command-r-plus':
+            footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)[0]
             command += ' --max_gpu_0 0.9 --max_gpus 0.9'
 
         if model == 'bloom-176B':
+            footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.95, max_fraction_gpus=0.95)[0]
             command += ' --max_gpu_0 0.95 --max_gpus 0.95'
             if not (int8 or int4):
                 command += ' --int8'
 
         commands.append(command)
+        gpu_footprints.append(footprint)
 
     if int8:
         commands = [c + ' --int8' for c in commands]
