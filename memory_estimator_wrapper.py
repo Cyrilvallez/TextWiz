@@ -164,13 +164,13 @@ if __name__ == '__main__':
         command = f'python3 -u memory_estimator.py {model} --N {N}'
         footprint = textwiz.estimate_number_of_gpus(model, int8, int4)[0]
 
-        if model == 'command-r-plus':
-            footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)[0]
-            command += ' --max_gpu_0 0.9 --max_gpus 0.9'
+        # if model == 'command-r-plus':
+            # footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)[0]
+            # command += ' --max_gpu_0 0.9 --max_gpus 0.9'
 
         if model == 'bloom-176B':
-            footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.95, max_fraction_gpus=0.95)[0]
-            command += ' --max_gpu_0 0.95 --max_gpus 0.95'
+            # footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.95, max_fraction_gpus=0.95)[0]
+            # command += ' --max_gpu_0 0.95 --max_gpus 0.95'
             if not (int8 or int4):
                 command += ' --int8'
 
@@ -183,16 +183,16 @@ if __name__ == '__main__':
         commands = [c + ' --int4' for c in commands]
 
     # Save infos about the benchmark
-    benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', 'infos.json')
-    infos = {
-        'date': str(date.today()),
-        'GPU_type': 'A100 40GB',
-        'transformers_version': transformers.__version__,
-        'textwiz_version': textwiz.__version__,
-        'torch_version': torch.__version__,
-        'flash_attn_version': flash_attn.__version__,
-    }
-    textwiz.helpers.utils.save_json(infos, benchmark_info_filename)
+    # benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', 'infos.json')
+    # infos = {
+    #     'date': str(date.today()),
+    #     'GPU_type': 'A100 40GB',
+    #     'transformers_version': transformers.__version__,
+    #     'textwiz_version': textwiz.__version__,
+    #     'torch_version': torch.__version__,
+    #     'flash_attn_version': flash_attn.__version__,
+    # }
+    # textwiz.helpers.utils.save_json(infos, benchmark_info_filename)
     
     t0 = time.time()
 
