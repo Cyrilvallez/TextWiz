@@ -363,13 +363,16 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     base_class = BASE_MODEL_CLASS_MAPPING[ALL_MODELS_PURPOSE[model_name]]
 
     # Load model
-    # We first try with flash attention 2
-    try:
-        model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
-                                           device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                           load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
-        success = True
-    except:
+    # We first try with flash attention 2 (only if dtype is not float32 because otherwise not supported)
+    if dtype != torch.float32:
+        try:
+            model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
+                                            device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
+                                            load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+            success = True
+        except:
+            success = False
+    else:
         success = False
     
     # Second try with Pytorch native sdpa (which may sometimes but not for all models also use flash attention 2)

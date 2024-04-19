@@ -27,6 +27,10 @@ ADDED_TOKENS_WARNING = ("Special tokens have been added in the vocabulary, make 
                         "embeddings are fine-tuned or trained.")
 # This is due to codegen25 tokenizers at load time
 UNK_TOKEN_WARNING = "Using unk_token, but it is not set yet."
+# Flash attention 2 warning
+FLASH_ATTENTION_2_WARNING = ("You are attempting to use Flash Attention 2.0 with a model not initialized on GPU. "
+                             "Make sure to move the model to GPU after initializing it on CPU with `model.to('cuda')`.")
+
 
 optimum_logger = logging.getLogger('optimum.bettertransformer.transformation')
 optimum_logger.addFilter(LoggingFilter(BETTER_TRANSFORMER_WARNING))
@@ -36,6 +40,9 @@ generation_logger.addFilter(LoggingFilter(PADDING_SIDE_WARNING))
 
 tokenization_logger = logging.getLogger('transformers.tokenization_utils_base')
 tokenization_logger.addFilter(LoggingFilter([ADDED_TOKENS_WARNING, UNK_TOKEN_WARNING]))
+
+modeling_logger = logging.getLogger('transformers.modeling_utils')
+modeling_logger.addFilter(LoggingFilter(FLASH_ATTENTION_2_WARNING))
 
 
 # warnings.filterwarnings(action='ignore', message=better_transformer_warning)
