@@ -599,6 +599,51 @@ class CommandConversation(GenericConversation):
                 prompt += self.start_turn + self.assistant_token
 
         return prompt
+    
+
+
+# reference: https://github.com/meta-llama/llama-recipes
+class Llama3Conversation(GenericConversation):
+
+    def __init__(self, eos_token: str):
+
+        super().__init__(eos_token)
+
+        # Override value
+        self.add_space_to_continuation_prompt = False
+
+        self.system_prompt = (
+            "You are Command-R, a brilliant, sophisticated, AI-assistant trained to assist human users by providing "
+            "thorough responses. You are trained by Cohere."
+        )
+
+        self.system_token = 'system'
+        self.user_token = 'user'
+        self.assistant_token = 'assistant'
+        self.start_role = '<|start_header_id|>'
+        self.end_role = '<|end_header_id|>'
+        self.end_message = '<|eot_id|>'
+ 
+
+    def get_prompt(self) -> str:
+        """Format the prompt representing the conversation that we will feed to the tokenizer.
+        """
+
+        if self.system_prompt.strip() != '':
+            prompt = self.start_role + self.system_token + self.end_role + '\n\n' + self.system_prompt.strip() + self.end_message
+        else:
+            prompt = ''
+
+        for user_message, model_response in self:
+
+            prompt += self.start_role + self.user_token + self.end_role + '\n\n' + user_message.strip() + self.end_message
+
+            if model_response is not None:
+                prompt += self.start_role + self.assistant_token + self.end_role + '\n\n' + model_response.strip() + self.end_message
+            else:
+                prompt += self.start_role + self.assistant_token + self.end_role + '\n\n'
+
+        return prompt
 
 
 # Mapping from model name to conversation class name
@@ -638,6 +683,10 @@ CONVERSATION_MAPPING = {
     # Command
     'command-r': CommandConversation,
     'command-r-plus': CommandConversation,
+
+    # Llama3
+    'llama3-8B-instruct': Llama3Conversation,
+    'llama3-70B-instruct': Llama3Conversation,
 }
 
 

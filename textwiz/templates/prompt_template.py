@@ -427,6 +427,39 @@ class CommandPromptTemplate(GenericPromptTemplate):
             formatted_prompt += model_context
 
         return formatted_prompt
+    
+
+
+# reference: https://github.com/meta-llama/llama-recipes
+class Llama3PromptTemplate(GenericPromptTemplate):
+
+    def __init__(self, mode: str = 'default'):
+
+        super().__init__(mode)
+        self.default_mode = 'chat'
+
+        self.system_token = 'system'
+        self.user_token = 'user'
+        self.assistant_token = 'assistant'
+        self.start_role = '<|start_header_id|>'
+        self.end_role = '<|end_header_id|>'
+        self.end_message = '<|eot_id|>'
+
+
+    def format_chat(self, prompt: str, model_context: str = '', system_prompt: str = '') -> str:
+
+        if system_prompt.strip() != '':
+            formatted_prompt = self.start_role + self.system_token + self.end_role + '\n\n' + system_prompt.strip() + self.end_message
+        else:
+            formatted_prompt = ''
+
+        formatted_prompt += self.start_role + self.user_token + self.end_role + '\n\n' + prompt.strip() + self.end_message
+        formatted_prompt += self.start_role + self.assistant_token + self.end_role + '\n\n'
+
+        if model_context != '':
+            formatted_prompt += model_context
+
+        return formatted_prompt
 
     
 
@@ -485,6 +518,10 @@ PROMPT_MAPPING = {
     # Command
     'command-r': CommandPromptTemplate,
     'command-r-plus': CommandPromptTemplate,
+
+    # Llama3
+    'llama3-8B-instruct': Llama3PromptTemplate,
+    'llama3-70B-instruct': Llama3PromptTemplate,
 }
 
 
