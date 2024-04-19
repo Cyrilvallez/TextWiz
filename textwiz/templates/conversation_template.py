@@ -623,6 +623,7 @@ class Llama3Conversation(GenericConversation):
         self.start_role = '<|start_header_id|>'
         self.end_role = '<|end_header_id|>'
         self.end_message = '<|eot_id|>'
+        self.bos_token = '<|begin_of_text|>'
  
 
     def get_prompt(self) -> str:
@@ -642,6 +643,9 @@ class Llama3Conversation(GenericConversation):
                 prompt += self.start_role + self.assistant_token + self.end_role + '\n\n' + model_response.strip() + self.end_message
             else:
                 prompt += self.start_role + self.assistant_token + self.end_role + '\n\n'
+
+        # TODO: REMOVE THIS WHEN THEY PATCH IT IN TRANSFORMERS!!!!!!!!
+        prompt = self.bos_token + prompt
 
         return prompt
 
