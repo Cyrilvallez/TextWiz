@@ -1,0 +1,8 @@
+{
+	"date": "2024-04-18",
+	"GPU_type": "A100 40GB",
+	"transformers_version": "4.40.0.dev0",
+	"textwiz_version": "0.6.0",
+	"torch_version": "2.2.1",
+	"flash_attn_version": "2.5.6"
+}
