@@ -168,6 +168,10 @@ class HFCausalModel(HFBaseModel):
             # it is a known special token (eos token) that will be generated when the sequence is finished.
             # This way it is automatically removed from the sequence when using `decode(..., skip_special_tokens=True)`
             pad_token_id = eos_token_id
+            # This may rarely happen that there are more than 1 eos token (it's the case for llama3).
+            # In this case, extract the first one from the container
+            if hasattr(pad_token_id, '__len__') and hasattr(pad_token_id, '__getitem__'):
+                pad_token_id = eos_token_id[0]
 
         # create the config
         generation_config = GenerationConfig(eos_token_id=eos_token_id, bos_token_id=bos_token_id,
