@@ -262,8 +262,9 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
 
         # In this case, the model will actually copy the cache in each iteration, see my work on memory in
         # https://github.com/huggingface/transformers/pull/30536. Thus the actual footprint is 2 times the cache
-        if not model.model._supports_dynamic_cache_class:
-            model_memory_consumption['cache size'][input_size] *= 2
+        # TODO: remove this block if not needed as suspected
+        # if not model.model._supports_default_dynamic_cache():
+        #     model_memory_consumption['cache size'][input_size] *= 2
 
         # Random new token to append
         new_token = torch.tensor([[124]], device=input_ids.device)
