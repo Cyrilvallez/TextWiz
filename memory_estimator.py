@@ -260,12 +260,6 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
         model_memory_consumption['without cache'][input_size] = max_peak_without_cache
         model_memory_consumption['cache size'][input_size] = memory_usage(output.past_key_values) / 1024**3
 
-        # In this case, the model will actually copy the cache in each iteration, see my work on memory in
-        # https://github.com/huggingface/transformers/pull/30536. Thus the actual footprint is 2 times the cache
-        # TODO: remove this block if not needed as suspected
-        # if not model.model._supports_default_dynamic_cache():
-        #     model_memory_consumption['cache size'][input_size] *= 2
-
         # Random new token to append
         new_token = torch.tensor([[124]], device=input_ids.device)
         # Formating inputs for second forward using cache
@@ -291,8 +285,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
         model_memory_consumption['with cache'][input_size + 1] = max_peak_with_cache
 
 
-    # Without that the memory keeps increasing at each iteration
-    del input_dict, output_dict, foo
+        # Without that the memory keeps increasing at each iteration
+        del input_dict, output, foo
       
     # Save results
     utils.save_json(model_memory_consumption, filename_memory)
