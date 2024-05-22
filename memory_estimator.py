@@ -3,6 +3,7 @@ import gc
 import argparse
 import time
 import logging
+from tqdm import tqdm
 
 import torch
 import numpy as np
@@ -187,8 +188,8 @@ def dtype_category(model, quantization_4bits: bool, quantization_8bits: bool) ->
 
 
 
-def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4bits: bool,
-                      max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8, N_repeat: int = 5):
+def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, quantization_4bits: bool,
+                      max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8):
     """Estimate the memory needed to generate text depending on the context size. This function will also check
     if the memory scale with the full context (input size + max_new_tokens), or only with the input size. Indeed,
     in the first forward pass we do not already have the K-V cache, so it needs to be computed. However, in some
@@ -207,9 +208,6 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
         The maximum fraction of the gpu 0 memory to reserve for the model. The default is 0.8.
     max_fraction_gpus : float, optional
         The maximum fraction of the other gpus memory to reserve for the model. The default is 0.8.
-    N_repeat : int, optional
-        How many times to measure the memory footprint, for more precise estimation. We take the mean value of the
-        `N_repeat` runs. By default 5
     """
 
     t0 = time.time()
@@ -226,101 +224,75 @@ def memory_estimation(model_name: str, quantization_8bits: bool, quantization_4b
         return
 
     # Load model
-    if model_name in loader.ALLOWED_CAUSAL_MODELS:
-        model = HFCausalModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits,
-                              max_fraction_gpu_0=max_fraction_gpu_0, max_fraction_gpus=max_fraction_gpus)
-    elif model_name in loader.ALLOWED_EMBEDDING_MODELS:
-        model = HFEmbeddingModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits,
-                                 max_fraction_gpu_0=max_fraction_gpu_0, max_fraction_gpus=max_fraction_gpus)
+    model = HFCausalModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits,
+                          max_fraction_gpu_0=max_fraction_gpu_0, max_fraction_gpus=max_fraction_gpus)
 
-    # To avoid possible early stopping on extra eos
-    model.extra_eos_tokens = []
-        
     gpus = model.get_gpu_devices()
-    large_tokens = model.tokenizer.encode(LARGE_TEXT*10)
+    large_tokens = model.tokenizer.encode(LARGE_TEXT*10, return_tensors='pt').to(model.input_device)
 
-    # Initialize dict (this key will be overwritten, but we want it in first for visibility in output file)
-    if model_name in loader.ALLOWED_CAUSAL_MODELS:
-        model_memory_consumption = {'only_scale_with_input_size': False}
-    else:
-        model_memory_consumption = {}
+    model_memory_consumption = {'without cache': {}, 'with cache': {}, 'cache size': {}}
 
     # We go until 8192 tokens maximum for this benchmark (more tokens are rarely used)
     max_input_size = min(model.get_context_size(), 8192)
     # select context sizes to use depending on model max context
-    input_sizes = np.linspace(32, max_input_size - 32, num=20, endpoint=True, dtype=int).tolist()
+    input_sizes = np.linspace(32, max_input_size - 32, num=50, endpoint=True, dtype=int).tolist()
 
-    scale_mode = []
+    for input_size in tqdm(input_sizes, desc=model_name):
 
-    for input_size in input_sizes:
-
-        prompt = model.tokenizer.decode(large_tokens[:input_size], skip_special_tokens=True)
-
-        results = []
-        for k in range(N_repeat):
+        # Select inputs
+        input_ids = large_tokens[:, :input_size]
                 
-            actual_peaks = {}
-            for gpu_rank in gpus:
-                torch.cuda.reset_peak_memory_stats(gpu_rank)
-                actual_peaks[gpu_rank] = torch.cuda.max_memory_allocated(gpu_rank) / 1024**3
+        actual_peaks = {}
+        for gpu_rank in gpus:
+            torch.cuda.reset_peak_memory_stats(gpu_rank)
+            actual_peaks[gpu_rank] = torch.cuda.max_memory_allocated(gpu_rank) / 1024**3
 
-            # Generate 2 new tokens to take into account that we need to estimate the memory of the 
-            # computation of past_key_values, and a second forward pass using them (which usually is more costly
-            # since the past K-V is large). Subsequent passes will scale linearly with the number of new tokens
-            if model_name in loader.ALLOWED_CAUSAL_MODELS:
-                foo = model(prompt, num_return_sequences=1, max_new_tokens=2, min_new_tokens=2, batch_size=1)
-            elif model_name in loader.ALLOWED_EMBEDDING_MODELS:
-                foo = model(prompt)
-            
-            memory_used = {}
-            for gpu_rank in gpus:
-                memory_used[gpu_rank] = (torch.cuda.max_memory_allocated(gpu_rank) / 1024**3) - actual_peaks[gpu_rank]
-            
-            # Actual largest memory usage peak accross gpus
-            max_peak = max(memory_used.values())
-            results.append(max_peak)
+        # Single forward pass creating the K-V cache
+        with torch.no_grad():
+            output = model.model(input_ids, return_dict=True, use_cache=True)
+        
+        memory_used = {}
+        for gpu_rank in gpus:
+            memory_used[gpu_rank] = (torch.cuda.max_memory_allocated(gpu_rank) / 1024**3) - actual_peaks[gpu_rank]
+        
+        # Actual largest memory usage peak accross gpus
+        max_peak_without_cache = max(memory_used.values())
+        model_memory_consumption['without cache'][input_size] = max_peak_without_cache
+        model_memory_consumption['cache size'][input_size] = memory_usage(output.past_key_values) / 1024**3
 
-        # Take the mean value of the N_repeat runs for better estimation
-        model_memory_consumption[input_size] = np.mean(results)
+        # In this case, the model will actually copy the cache in each iteration, see my work on memory in
+        # https://github.com/huggingface/transformers/pull/30536. Thus the actual footprint is 2 times the cache
+        if not model.model._supports_dynamic_cache_class:
+            model_memory_consumption['cache size'][input_size] *= 2
 
-        # Estimate the size of the past key values compared to the memory needed to compute them the first time
-        # We only need a raw estimate, so we do it only once instead of N_repeat times
-        if model_name in loader.ALLOWED_CAUSAL_MODELS:
-            with torch.no_grad():
-                prompt_ids = model.tokenizer.encode(prompt, return_tensors='pt').cuda()
-                
-                for gpu_rank in gpus:
-                    torch.cuda.reset_peak_memory_stats(gpu_rank)
-                    actual_peaks[gpu_rank] = torch.cuda.max_memory_allocated(gpu_rank) / 1024**3
+        # Random new token to append
+        new_token = torch.tensor([[124]], device=input_ids.device)
+        # Formating inputs for second forward using cache
+        new_input_ids = torch.cat((input_ids, new_token), dim=1)
+        input_dict = model.model.prepare_inputs_for_generation(new_input_ids, past_key_values=output.past_key_values,
+                                                               use_cache=True)
+        
+        actual_peaks = {}
+        for gpu_rank in gpus:
+            torch.cuda.reset_peak_memory_stats(gpu_rank)
+            actual_peaks[gpu_rank] = torch.cuda.max_memory_allocated(gpu_rank) / 1024**3
+        
+        # New forward pass using the K-V cache
+        with torch.no_grad():
+            foo = model.model(**input_dict)
 
-                # Single forward pass, caching past key values
-                output = model.model(prompt_ids, use_cache=True)
-
-                memory_used = {}
-                for gpu_rank in gpus:
-                    memory_used[gpu_rank] = (torch.cuda.max_memory_allocated(gpu_rank) / 1024**3) - actual_peaks[gpu_rank]
-                
-            # Actual largest memory usage peak accross gpus
-            max_peak = max(memory_used.values())
-            # Compute size of past K-V
-            past_key_values_memory = memory_usage(output.past_key_values) / 1024**3
-
-            # Our heuristic to estimate if the past_key_values memory size is actually negligible compared to
-            # the memory needed for their first computation (an order of magnitude larger means that the first
-            # computation of past K-V is actually the memory bottleneck, independently of max_new_tokens for at least
-            # reasonably small/medium max_new_tokens value)
-            if max_peak / past_key_values_memory > 10:
-                only_scale_with_input_size = True
-            else:
-                only_scale_with_input_size = False
-
-            scale_mode.append(only_scale_with_input_size)
+        memory_used = {}
+        for gpu_rank in gpus:
+            memory_used[gpu_rank] = (torch.cuda.max_memory_allocated(gpu_rank) / 1024**3) - actual_peaks[gpu_rank]
+        
+        # Actual largest memory usage peak accross gpus
+        max_peak_with_cache = max(memory_used.values())
+        model_memory_consumption['with cache'][input_size + 1] = max_peak_with_cache
 
 
-    # If this is true for all sizes, then set it to true
-    if model_name in loader.ALLOWED_CAUSAL_MODELS:
-        model_memory_consumption['only_scale_with_input_size'] = all(scale_mode)
-            
+    # Without that the memory keeps increasing at each iteration
+    del input_dict, output_dict, foo
+      
     # Save results
     utils.save_json(model_memory_consumption, filename_memory)
 
@@ -345,8 +317,6 @@ if __name__ == '__main__':
                         help='Max fraction of gpu 0 memory to reserve for the model.')
     parser.add_argument('--max_gpus', type=float, default=0.8,
                         help='Max fraction of gpus (other than indice 0) memory to reserve for the model.')
-    parser.add_argument('--N', type=int, default=5,
-                        help='The number of time to repeat each computation for accurate estimation. By default 5.')
     
     args = parser.parse_args()
     model = args.model
@@ -354,7 +324,6 @@ if __name__ == '__main__':
     int4 = args.int4
     max_gpu_0 = args.max_gpu_0
     max_gpus = args.max_gpus
-    N = args.N
 
     if int4 and int8:
         raise ValueError('int4 and int8 quantization are mutually exclusive.')
@@ -364,4 +333,4 @@ if __name__ == '__main__':
         raise RuntimeError("I'm begging you, run this benchmark with some GPUs...")
 
     # Perform the estimation
-    memory_estimation(model, int8, int4, max_gpu_0, max_gpus, N)
+    memory_estimation_causal_model(model, int8, int4, max_gpu_0, max_gpus)

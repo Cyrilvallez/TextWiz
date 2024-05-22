@@ -7,7 +7,6 @@ import copy
 import re
 
 import torch
-import scipy
 import numpy as np
 from transformers import StoppingCriteriaList, GenerationConfig
 
@@ -322,7 +321,7 @@ class HFCausalModel(HFBaseModel):
 
         # Infer batch size if not given
         if batch_size is None:
-            batch_size = self.infer_best_batch_size(input_length, max_new_tokens, num_return_sequences)
+            batch_size = self.infer_best_batch_size(input_length, max_new_tokens)
 
         # Anything larger than `num_return_sequences` is useless
         batch_size = min(batch_size, num_return_sequences)
@@ -386,7 +385,7 @@ class HFCausalModel(HFBaseModel):
         return self.generate_text(*args, **kwargs)
     
 
-    def infer_best_batch_size(self, input_size: int, max_new_tokens: int, num_return_sequences: int) -> int:
+    def infer_best_batch_size(self, input_size: int, max_new_tokens: int) -> int:
         """Try to infer the best (largest) possible batch size for the model given the current `input_size`,
         and `max_new_tokens`. By default, this function checks if a batch memory footprint estimation exists
         in the folder `memory_estimator`, and falls back to simple heuristics if this is not the case.
@@ -397,62 +396,65 @@ class HFCausalModel(HFBaseModel):
             The input length.
         max_new_tokens : int
             The number of tokens to generate.
-        num_return_sequences : int
-            The number of sequences to generate.
         Returns
         -------
         int
             Estimation of the largest possible batch size.
         """
     
+        # Only take 0.92 of the gpu memory into account in order to not completely clutter the memory
         if not torch.cuda.is_available():
             memory = psutil.virtual_memory().total / 1024**3
+            available_memory = memory*0.92 - self.get_max_device_memory_footprint()
         else:
             memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-
-        # Only take 0.85 of the gpu memory into account in order to not completely clutter the memory
-        available_memory = memory*0.85 - self.get_max_device_memory_footprint()
+            available_memory = memory*0.92 - max(torch.cuda.memory_allocated(device) for device in self.get_gpu_devices())
 
         # Try loading estimator file
         try:
             reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', self.model_name, f'{self.dtype_category()}.json')
-            batch_footprint = utils.load_json(reference_file)
-            only_scale_with_input_size = batch_footprint.pop('only_scale_with_input_size', False)
+            memory_footprints = utils.load_json(reference_file)
             # Convert keys to int
-            batch_footprint = {int(k): v for k, v in batch_footprint.items()}
+            memory_footprints = {k1: {int(k2): v2 for k2, v2 in v1.items()} for k1, v1 in memory_footprints.items()}
         # If no precise estimate exist, fall back to simple heuristics
         except FileNotFoundError:
-            return self.infer_best_batch_size_by_heuristics(available_memory)
+            return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
+
+        fit_results = {}
+
+        # Fit the curves
+        for key in memory_footprints.keys():
+            x = np.array(list(memory_footprints[key].keys()))
+            y = np.array(list(memory_footprints[key].values()))
+            # Make sure vectors are sorted correctly (dics should stay ordered but you never know)
+            sorting = np.argsort(x)
+            x = x[sorting]
+            y = y[sorting]
+
+            # Memory usage of forward pass without cache is linear when using flash attention implementation, else quadratic.
+            if key == 'without cache' and not self.efficient:
+                fit, stats = np.polynomial.Polynomial.fit(x, y, deg=2, full=True)
+            # Memory usage of cache and forward pass using cache is always linear.
+            else:
+                fit, stats = np.polynomial.Polynomial.fit(x, y, deg=1, full=True)
+
+            r2 = r_squared(stats[0], y)
+            # This should always be the case, but check it if for some reason the behavior is not sufficiently linear (or quadratic)
+            if r2 < 0.95:
+                warnings.warn((f'Memory estimation for {self.model.__class__.__name__} is not sufficiently precise. '
+                               'Falling back to heuristics.'))
+                return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
+            fit_results[key] = fit
 
 
-        x = list(batch_footprint.keys())
-        y = list(batch_footprint.values())
-        # sort according to increasing sequence
-        sorting = np.argsort(x)
-        x = np.array(x)[sorting]
-        y = np.array(y)[sorting]
-        
-        # Memory usage is linear wrt to sequence length when using K-V cache
-        fit = scipy.stats.linregress(x, y)
-        intercept = fit.intercept
-        slope = fit.slope
-        r2 = fit.rvalue**2
-
-        # If the flag `only_scale_with_input_size` is active, the memory needed for subsequent forward passes
-        # is negligible compared to the memory needed to compute the K-V cache the first time
-        sequence_length = input_size if only_scale_with_input_size else input_size + max_new_tokens
-
-        # This should always be the case, but check it if for some reason the behavior is not sufficiently linear
-        if r2 >= 0.95:
-            memory_needed = intercept + slope * sequence_length
-        # In this case, fall back to simple heuristics
-        else:
-            return self.infer_best_batch_size_by_heuristics(available_memory)
+        memory_needed_without_cache = fit_results['without cache'](input_size)
+        memory_needed_with_cache = fit_results['cache size'](input_size + max_new_tokens) + fit_results['with cache'](input_size + max_new_tokens)
+        memory_needed = max(memory_needed_without_cache, memory_needed_with_cache)
 
         return int(available_memory // memory_needed)
     
 
-    def infer_best_batch_size_by_heuristics(self, available_memory: float) -> int:
+    def infer_best_batch_size_by_heuristics(self, available_memory: float, input_size: int, max_new_tokens: int) -> int:
         """Infer the largest possible batch size using very simple and raw heuristics. It only uses the number
         of parameters of the model, which is not a very good indicator. 
 
@@ -460,6 +462,10 @@ class HFCausalModel(HFBaseModel):
         ----------
         available_memory : float
             The memory available for the forward pass.
+        input_size : int
+            The input length.
+        max_new_tokens : int
+            The number of tokens to generate.
 
         Returns
         -------
@@ -468,14 +474,16 @@ class HFCausalModel(HFBaseModel):
         """
 
         parameters = self.parameters_count()
+        total_size = input_size + max_new_tokens
+        chunks = (total_size // 2048) + 1 if total_size % 2048 != 0 else total_size // 2048
         if parameters < 5:
-            batch = int(available_memory // 0.5)
+            batch = int(available_memory // (1 * chunks))
         elif parameters < 10:
-            batch = int(available_memory // 1)
+            batch = int(available_memory // (2 * chunks))
         elif parameters < 20:
-            batch = int(available_memory // 2)
+            batch = int(available_memory // (3 * chunks))
         else:
-            batch = int(available_memory // 3)
+            batch = int(available_memory // (4 * chunks))
         
         return max(batch, 1)
 
@@ -881,3 +889,9 @@ class HFCausalModel(HFBaseModel):
 
         return perplexity_output.item()
         
+
+
+def r_squared(residual: float, y: np.array) -> float:
+    """Compute the coefficient of determination (R^2) of a numpy fit."""
+    SS_tot = sum((y - np.mean(y))**2)
+    return 1 - residual / SS_tot
