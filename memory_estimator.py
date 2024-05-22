@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 import torch
 import numpy as np
+from transformers import DynamicCache
 
 from textwiz import HFCausalModel, HFEmbeddingModel, loader
 from textwiz.helpers import warnings_suppressor, utils
@@ -249,7 +250,9 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
 
         # Single forward pass creating the K-V cache
         with torch.no_grad():
-            output = model.model(input_ids, return_dict=True, use_cache=True)
+            # Initialize a DynamicCache as will be done by default
+            past_key_values = DynamicCache() if model.model._supports_default_dynamic_cache() else None
+            output = model.model(input_ids, past_key_values=past_key_values, return_dict=True, use_cache=True)
         
         memory_used = {}
         for gpu_rank in gpus:
