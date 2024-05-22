@@ -175,3 +175,70 @@ def copy_docstring_and_signature(copied_func: Callable[P, T]):
         return original_func
     
     return wrapper
+
+
+def memory_estimation(reference_file: str, input_size: int, max_new_tokens: int) -> tuple[float, bool]:
+    """Compute the memory needed in GiB for a batch size of 1 given the current `reference_file` (memory estimations for
+    a given model), and current `input_size` and `max_new_tokens`.
+
+    Parameters
+    ----------
+    reference_file : str
+        File containing the memory estimations for a given model and dtype.
+    input_size : int
+        The input length.
+    max_new_tokens : int
+        The number of tokens to generate.
+    Returns
+    -------
+    tuple[float, bool]
+        Tuple containing the memory needed in GiB and whether this estimation is good or not (depending on goodness
+        of fit).
+    """
+    
+    memory_footprints = load_json(reference_file)
+    # Convert keys to int
+    memory_footprints = {k1: {int(k2): v2 for k2, v2 in v1.items()} for k1, v1 in memory_footprints.items()}
+
+    passes_r2_test = True
+    fit_results = {}
+
+    # Fit the curves
+    for key in memory_footprints.keys():
+        x = np.array(list(memory_footprints[key].keys()))
+        y = np.array(list(memory_footprints[key].values()))
+        # Make sure vectors are sorted correctly (dics should stay ordered but you never know)
+        sorting = np.argsort(x)
+        x = x[sorting]
+        y = y[sorting]
+
+        # Memory usage of forward pass without cache is linear when using flash attention implementation, else quadratic.
+        if key == 'without cache':
+            # First try linear
+            fit, stats = np.polynomial.Polynomial.fit(x, y, deg=1, full=True)
+            r2 = r_squared(stats[0], y)
+            # If bad fit, fallback to quadratic
+            if r2 < 0.95:
+                fit, stats = np.polynomial.Polynomial.fit(x, y, deg=2, full=True)
+        # Memory usage of cache and forward pass using cache is always linear.
+        else:
+            fit, stats = np.polynomial.Polynomial.fit(x, y, deg=1, full=True)
+
+        r2 = r_squared(stats[0], y)
+        # This should always be the case, but check it if for some reason the behavior is not sufficiently linear (or quadratic)
+        if r2 < 0.95:
+            passes_r2_test = False
+        fit_results[key] = fit
+
+
+    memory_needed_without_cache = fit_results['without cache'](input_size)
+    memory_needed_with_cache = fit_results['cache size'](input_size + max_new_tokens) + fit_results['with cache'](input_size + max_new_tokens)
+    memory_needed = max(memory_needed_without_cache, memory_needed_with_cache)
+
+    return memory_needed, passes_r2_test
+
+
+def r_squared(residual: float, y: np.array) -> float:
+    """Compute the coefficient of determination (R^2) of a numpy fit."""
+    SS_tot = sum((y - np.mean(y))**2)
+    return 1 - residual / SS_tot

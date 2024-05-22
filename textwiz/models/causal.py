@@ -410,47 +410,19 @@ class HFCausalModel(HFBaseModel):
             memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
             available_memory = memory*0.92 - max(torch.cuda.memory_allocated(device) for device in self.get_gpu_devices())
 
-        # Try loading estimator file
+        # Try to estimate the memory needed for current inputs
         try:
             reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', self.model_name, f'{self.dtype_category()}.json')
-            memory_footprints = utils.load_json(reference_file)
-            # Convert keys to int
-            memory_footprints = {k1: {int(k2): v2 for k2, v2 in v1.items()} for k1, v1 in memory_footprints.items()}
+            memory_needed, passes_r2_test = utils.memory_estimation(reference_file, input_size, max_new_tokens)
         # If no precise estimate exist, fall back to simple heuristics
         except FileNotFoundError:
             return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
 
-        fit_results = {}
-
-        # Fit the curves
-        for key in memory_footprints.keys():
-            x = np.array(list(memory_footprints[key].keys()))
-            y = np.array(list(memory_footprints[key].values()))
-            # Make sure vectors are sorted correctly (dics should stay ordered but you never know)
-            sorting = np.argsort(x)
-            x = x[sorting]
-            y = y[sorting]
-
-            # Memory usage of forward pass without cache is linear when using flash attention implementation, else quadratic.
-            if key == 'without cache' and not self.efficient:
-                fit, stats = np.polynomial.Polynomial.fit(x, y, deg=2, full=True)
-            # Memory usage of cache and forward pass using cache is always linear.
-            else:
-                fit, stats = np.polynomial.Polynomial.fit(x, y, deg=1, full=True)
-
-            r2 = r_squared(stats[0], y)
-            # This should always be the case, but check it if for some reason the behavior is not sufficiently linear (or quadratic)
-            if r2 < 0.95:
-                warnings.warn((f'Memory estimation for {self.model.__class__.__name__} is not sufficiently precise. '
-                               'Falling back to heuristics.'))
-                return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
-            fit_results[key] = fit
-
-
-        memory_needed_without_cache = fit_results['without cache'](input_size)
-        memory_needed_with_cache = fit_results['cache size'](input_size + max_new_tokens) + fit_results['with cache'](input_size + max_new_tokens)
-        memory_needed = max(memory_needed_without_cache, memory_needed_with_cache)
-
+        if not passes_r2_test:
+            warnings.warn((f'Memory estimation for {self.model.__class__.__name__} is not sufficiently precise. '
+                            'Falling back to heuristics.'))
+            return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
+        
         return int(available_memory // memory_needed)
     
 
@@ -888,10 +860,3 @@ class HFCausalModel(HFBaseModel):
         perplexity_output = torch.exp(loss / (seq_len-1))
 
         return perplexity_output.item()
-        
-
-
-def r_squared(residual: float, y: np.array) -> float:
-    """Compute the coefficient of determination (R^2) of a numpy fit."""
-    SS_tot = sum((y - np.mean(y))**2)
-    return 1 - residual / SS_tot
