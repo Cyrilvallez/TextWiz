@@ -289,7 +289,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
 
 
         # Without that the memory keeps increasing at each iteration
-        del input_dict, output, foo
+        del input_dict, output, foo, past_key_values
       
     # Save results
     utils.save_json(model_memory_consumption, filename_memory)
