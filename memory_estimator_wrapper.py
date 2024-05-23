@@ -5,6 +5,7 @@ import sys
 import argparse
 import os
 from datetime import date
+from tqdm import tqdm
 
 import torch
 import transformers
@@ -68,6 +69,9 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     processes = []
     associated_gpus = []
 
+    # Custom tqdm bar
+    progress_bar = tqdm(total=len(commands))
+
     while True:
 
         no_sleep = False
@@ -112,6 +116,8 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
             # Remove processes which are done
             processes = [process for i, process in enumerate(processes) if i not in indices_to_remove]
             associated_gpus = [gpus for i, gpus in enumerate(associated_gpus) if i not in indices_to_remove]
+            # Update progress bar
+            progress_bar.update(len(indices_to_remove))
 
         # If we scheduled all jobs, break from the infinite loop
         if len(gpu_footprints) == 0:
@@ -125,6 +131,11 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     # Sleep until all processes are finished (they have all been scheduled at this point)
     for process in processes:
         process.wait()
+        # Update when process is finished waiting
+        progress_bar.update(1)
+
+    # Close the progress bar
+    progress_bar.close()
 
 
 
@@ -135,13 +146,10 @@ if __name__ == '__main__':
                         help='If given, will estimate the memory footprint of the model quantized to int8.')
     parser.add_argument('--int4', action='store_true',
                         help='If given, will estimate the memory footprint of the model quantized to int4.')
-    parser.add_argument('--N', type=int, default=5,
-                        help='The number of time to repeat each computation for accurate estimation. By default 5.')
     
     args = parser.parse_args()
     int8 = args.int8
     int4 = args.int4
-    N = args.N
 
     if int4 and int8:
         raise ValueError('int4 and int8 quantization are mutually exclusive.')
@@ -153,34 +161,21 @@ if __name__ == '__main__':
     num_gpus = torch.cuda.device_count()
 
     # Select models
-    models = textwiz.loader.ALLOWED_MODELS
+    models = textwiz.loader.ALLOWED_CAUSAL_MODELS
 
     print(f'Launching computations with {num_gpus} gpus available.')
 
     # Create the commands to run
-    gpu_footprints = []
-    commands = []
-    for model in models:
-        command = f'python3 -u memory_estimator.py {model} --N {N}'
-        footprint = textwiz.estimate_number_of_gpus(model, int8, int4)[0]
-
-        # if model == 'command-r-plus':
-            # footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.9, max_fraction_gpus=0.9)[0]
-            # command += ' --max_gpu_0 0.9 --max_gpus 0.9'
-
-        if model == 'bloom-176B':
-            # footprint = textwiz.estimate_number_of_gpus(model, int8, int4, max_fraction_gpu_0=0.95, max_fraction_gpus=0.95)[0]
-            # command += ' --max_gpu_0 0.95 --max_gpus 0.95'
-            if not (int8 or int4):
-                command += ' --int8'
-
-        commands.append(command)
-        gpu_footprints.append(footprint)
-
+    gpu_footprints = textwiz.estimate_number_of_gpus(models, int8, int4)
+    commands = [f'python3 -u memory_estimator.py {model}' for model in models]
     if int8:
         commands = [c + ' --int8' for c in commands]
     if int4:
         commands = [c + ' --int4' for c in commands]
+    # Override for Bloom due to its size
+    if not (int8 or int4):
+        idx = models.index('bloom-176B')
+        commands[idx] += ' --int8'
 
     # Save infos about the benchmark
     benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', 'infos.json')

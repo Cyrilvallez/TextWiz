@@ -106,8 +106,8 @@ def single_memory_pass(model: HFCausalModel, input_ids: torch.Tensor) -> tuple[f
     return max_peak_without_cache, cache_size, max_peak_with_cache
 
 
-def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, quantization_4bits: bool,
-                      max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8):
+def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = False, quantization_4bits: bool = False,
+                                   max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8):
     """Estimate the memory needed to generate text depending on the context size. This function will also check
     if the memory scale with the full context (input size + max_new_tokens), or only with the input size. Indeed,
     in the first forward pass we do not already have the K-V cache, so it needs to be computed. However, in some
@@ -118,9 +118,9 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
     ----------
     model_name : str
         The name of the model.
-    quantization_8bits : bool
+    quantization_8bits : bool, optional
         Whether the model will be loaded in 8 bits mode, by default False.
-    quantization_4bits : bool
+    quantization_4bits : bool, optional
         Whether the model will be loaded in 4 bits mode, by default False.
     max_fraction_gpu_0 : float, optional
         The maximum fraction of the gpu 0 memory to reserve for the model. The default is 0.8.
@@ -151,16 +151,23 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
 
     # We go until 8192 tokens maximum for this benchmark (more tokens are rarely used)
     max_input_size = min(model.get_context_size(), 8192)
-    # select context sizes to use depending on model max context
+    # select input sizes to use depending on model max context
     input_sizes = np.linspace(32, max_input_size - 32, num=50, endpoint=True, dtype=int).tolist()
 
-    for input_size in tqdm(input_sizes, desc=model_name):
+    for input_size in tqdm(input_sizes, desc=model_name, leave=False):
 
         # Select inputs
         input_ids = large_tokens[:, :input_size]
                 
-        # Get memory needs for current input_ids
-        max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
+        # Try to get memory needs for current input_ids
+        try:
+            max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
+        # If OOM, exit loop and save results
+        except RuntimeError as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                break
+            else:
+                raise e
 
         # Add entries to result dictionary
         model_memory_consumption['without cache'][input_size] = max_peak_without_cache
