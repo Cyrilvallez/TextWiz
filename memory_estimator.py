@@ -43,6 +43,8 @@ def dtype_category(model, quantization_4bits: bool, quantization_8bits: bool) ->
 def single_memory_pass(model: HFCausalModel, input_ids: torch.Tensor) -> tuple[float, float, float]:
     """Returns the memory usage of the forward pass creating the cache, memory usage of the cache, and memory usage of
     a second forward pass using the cache for the given `input_ids`. Everything in GiB.
+    Note that this is handy to wrap in a function as the potentially big outputs (cache) are immediately 
+    deallocated after the call.
 
     Parameters
     ----------
@@ -157,7 +159,10 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool, qu
         # Select inputs
         input_ids = large_tokens[:, :input_size]
                 
+        # Get memory needs for current input_ids
         max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
+
+        # Add entries to result dictionary
         model_memory_consumption['without cache'][input_size] = max_peak_without_cache
         model_memory_consumption['cache size'][input_size] = cache_size
         model_memory_consumption['with cache'][input_size + 1] = max_peak_with_cache
