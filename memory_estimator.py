@@ -1,4 +1,5 @@
 import os
+import sys
 import gc
 import argparse
 import time
@@ -154,7 +155,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     # select input sizes to use depending on model max context
     input_sizes = np.linspace(32, max_input_size - 32, num=50, endpoint=True, dtype=int).tolist()
 
-    for input_size in tqdm(input_sizes, desc=model_name, leave=False):
+    for input_size in tqdm(input_sizes, desc=model_name, leave=False, file=sys.stdout):
 
         # Select inputs
         input_ids = large_tokens[:, :input_size]
@@ -179,7 +180,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
 
     dt = time.time() - t0
 
-    print(f'Done with {model_name} in {dt/3600:.2f} h!')
+    # Use tqdm.write instead of print to avoid messing with progress bars
+    tqdm.write(f'Done with {model_name} in {dt/3600:.2f} h!')
 
     del model
     gc.collect()
