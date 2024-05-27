@@ -22,7 +22,6 @@ license = {file = "LICENSE"}
 requires-python = ">=3.11"
 dependencies = [
     "numpy",
-    "scipy",
     "pyyaml",
     "packaging",
     "torch>=2.2.0",
