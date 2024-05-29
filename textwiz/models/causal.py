@@ -409,7 +409,7 @@ class HFCausalModel(HFBaseModel):
             available_memory = memory*0.92 - self.get_max_device_memory_footprint()
         else:
             memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            available_memory = memory*0.92 - max(torch.cuda.memory_allocated(device) for device in self.get_gpu_devices())
+            available_memory = memory*0.92 - max(torch.cuda.memory_allocated(device) / 1024**3 for device in self.get_gpu_devices())
 
         # Try to estimate the memory needed for current inputs
         try:
@@ -424,9 +424,7 @@ class HFCausalModel(HFBaseModel):
                             'Falling back to heuristics.'))
             return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
         
-        best_batch_size = int(available_memory // memory_needed)
-        return best_batch_size
-        # return max(1, best_batch_size)
+        return int(available_memory // memory_needed)
     
 
     def infer_best_batch_size_by_heuristics(self, available_memory: float, input_size: int, max_new_tokens: int) -> int:
