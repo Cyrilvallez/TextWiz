@@ -322,6 +322,7 @@ class HFCausalModel(HFBaseModel):
         # Infer batch size if not given
         if batch_size is None:
             batch_size = self.infer_best_batch_size(input_length, max_new_tokens)
+        print(f'Batch size: {batch_size}')
 
         # Anything larger than `num_return_sequences` is useless
         batch_size = min(batch_size, num_return_sequences)
@@ -423,7 +424,9 @@ class HFCausalModel(HFBaseModel):
                             'Falling back to heuristics.'))
             return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
         
-        return int(available_memory // memory_needed)
+        best_batch_size = int(available_memory // memory_needed)
+        return best_batch_size
+        # return max(1, best_batch_size)
     
 
     def infer_best_batch_size_by_heuristics(self, available_memory: float, input_size: int, max_new_tokens: int) -> int:
