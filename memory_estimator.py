@@ -10,7 +10,7 @@ import torch
 import numpy as np
 from transformers import DynamicCache
 
-from textwiz import HFCausalModel, loader
+from textwiz import HFCausalModel, loader, dtype_category
 from textwiz.helpers import warnings_suppressor, utils
 from textwiz.helpers.constants import RANDOM_LONG_TEXT
 
@@ -29,16 +29,6 @@ def memory_usage(past_key_values):
         return sum([x.nelement() * x.element_size() for x in past_key_values])
     else:
         return sum([memory_usage(x) for x in past_key_values])
-    
-
-def dtype_category(model, quantization_4bits: bool, quantization_8bits: bool) -> str:
-    """Return a string representation of the model dtype."""
-    if quantization_4bits:
-        return 'int4'
-    elif quantization_8bits:
-        return 'int8'
-    else:
-        return str(loader.ALL_MODELS_DTYPES[model]).split('.', 1)[1]
 
 
 def single_memory_pass(model: HFCausalModel, input_ids: torch.Tensor) -> tuple[float, float, float]:

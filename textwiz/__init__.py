@@ -35,6 +35,16 @@ def is_chat_model(model_name: str) -> bool:
     return template.default_mode == 'chat'
 
 
+def dtype_category(model_name: str, quantization_4bits: bool, quantization_8bits: bool) -> str:
+    """Return a string representation of the model dtype."""
+    if quantization_4bits:
+        return 'int4'
+    elif quantization_8bits:
+        return 'int8'
+    else:
+        return str(loader.ALL_MODELS_DTYPES[model_name]).split('.', 1)[1]
+
+
 def estimate_number_of_gpus(models: list[str] | str, quantization_8bits: bool = False, quantization_4bits: bool = False,
                             max_fraction_gpu_0: float = 0.8, max_fraction_gpus: float = 0.8) -> list[int]:
     """Estimate the mumber of gpus needed to run each of the `models` correctly.
