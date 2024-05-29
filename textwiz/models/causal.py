@@ -322,7 +322,6 @@ class HFCausalModel(HFBaseModel):
         # Infer batch size if not given
         if batch_size is None:
             batch_size = self.infer_best_batch_size(input_length, max_new_tokens)
-        print(f'Batch size: {batch_size}')
 
         # Anything larger than `num_return_sequences` is useless
         batch_size = min(batch_size, num_return_sequences)
