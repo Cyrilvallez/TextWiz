@@ -123,7 +123,7 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
         no_sleep = False
 
         # In this case we have enough gpus available to launch the job that needs the less gpus
-        if len(available_gpus) >= gpu_footprints[0] and len(commands) > 0:
+        if len(commands) > 0 and len(available_gpus) >= gpu_footprints[0]:
 
             no_sleep = True
 
