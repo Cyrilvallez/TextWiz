@@ -4,7 +4,7 @@ import shlex
 import sys
 import argparse
 import tempfile
-import uuid
+import re
 import os
 from datetime import date
 from tqdm import tqdm
@@ -35,9 +35,9 @@ def synchronize_file_streams(output_files: list, error_files: list, main_process
     for f_out, f_err in zip(output_files, error_files):
         # We need to seek before reading
         f_out.seek(0)
-        out = f_out.read().decode().strip()
+        out = f_out.read().decode(errors='ignore').strip()
         f_err.seek(0)
-        err = f_err.read().decode().strip()
+        err = f_err.read().decode(errors='ignore').strip()
         
         if out != '':
             tot_output += out + '\n'
@@ -48,11 +48,17 @@ def synchronize_file_streams(output_files: list, error_files: list, main_process
     tot_output = tot_output.strip()
     tot_error = tot_error.strip()
 
-    # Truncate and rewrite stdout and stderr of the main process
-    sys.stdout.truncate(0)
-    sys.stdout.write(tot_output)
-    sys.stderr.truncate(0)
-    sys.stderr.write(tot_error)
+    sys.stdout.seek(0)
+    current_output = sys.stdout.read()
+    sys.stderr.seek(0)
+    current_error = sys.stderr.read()
+    # Truncate and rewrite stdout and stderr of the main process if necessary
+    if tot_output != current_output:
+        sys.stdout.truncate(0)
+        sys.stdout.write(tot_output)
+    if tot_error != current_error:
+        sys.stderr.truncate(0)
+        sys.stderr.write(tot_error)
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
@@ -116,7 +122,7 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     writing_dir = tempfile.TemporaryDirectory(dir=os.getcwd())
 
     # Custom tqdm bar
-    progress_bar = tqdm(total=len(commands), file=sys.stdout)
+    progress_bar = tqdm(total=len(commands), file=sys.stdout, desc='Dispatcher')
 
     while True:
 
@@ -138,8 +144,9 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
             available_gpus = available_gpus[footprint:]
 
             # Create output and error files
-            output_file = open(os.path.join(writing_dir.name, str(uuid.uuid4()) + '.out'), mode='w+b')
-            error_file = open(os.path.join(writing_dir.name, str(uuid.uuid4()) + '.err'), mode='w+b')
+            filename = re.search(r'python3 -u .+?\.py (.+?)(?:$| )', executable).group(1)
+            output_file = open(os.path.join(writing_dir.name, filename + '.out'), mode='w+b')
+            error_file = open(os.path.join(writing_dir.name, filename + '.err'), mode='w+b')
             output_files.append(output_file)
             error_files.append(error_file)
 
