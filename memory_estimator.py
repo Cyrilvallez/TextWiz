@@ -151,7 +151,6 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         input_ids = large_tokens[:, :input_size]
                 
         # Try to get memory needs for current input_ids
-        # max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
         try:
             max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
         # If OOM, exit loop and save results
@@ -166,8 +165,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         model_memory_consumption['cache size'][input_size] = cache_size
         model_memory_consumption['with cache'][input_size + 1] = max_peak_with_cache
       
-    # Save results
-    utils.save_json(model_memory_consumption, filename_memory)
+        # Save results
+        utils.save_json(model_memory_consumption, filename_memory)
 
     dt = time.time() - t0
 
