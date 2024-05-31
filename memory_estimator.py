@@ -129,7 +129,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
     filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', model_name, f'{dtype_name}.json')
     if os.path.exists(filename_memory):
-        tqdm.write(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
+        print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
         return
 
     # Load model
@@ -145,7 +145,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     # select input sizes to use depending on model max context
     input_sizes = np.linspace(32, max_input_size - 32, num=50, endpoint=True, dtype=int).tolist()
 
-    for input_size in tqdm(input_sizes, desc=model_name, leave=False, file=sys.stdout):
+    for input_size in tqdm(input_sizes, desc=model_name, file=sys.stdout):
 
         # Select inputs
         input_ids = large_tokens[:, :input_size]

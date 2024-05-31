@@ -3,6 +3,8 @@ import time
 import shlex
 import sys
 import argparse
+import tempfile
+import uuid
 import os
 from datetime import date
 from tqdm import tqdm
@@ -12,6 +14,45 @@ import transformers
 import flash_attn
 
 import textwiz
+
+
+def synchronize_file_streams(output_files: list, error_files: list, main_process_bar: tqdm):
+    """Synchronize the outputs of all subprocesses into main process stdout and stderr. This is needed
+    to correctly display the progress bar of the subprocesses in real-time in a single file.
+
+    Parameters
+    ----------
+    output_files : list
+        List of stdout file handles of the subprocesses.
+    error_files : list
+        List of stderr file handles of the subprocesses.
+    main_process_bar : tqdm
+        The progress bar tracking the dispatch of all subprocesses.
+    """
+    
+    tot_output = ''
+    tot_error = ''
+    for f_out, f_err in zip(output_files, error_files):
+        # We need to seek before reading
+        f_out.seek(0)
+        out = f_out.read().decode().strip()
+        f_err.seek(0)
+        err = f_err.read().decode().strip()
+        
+        if out != '':
+            tot_output += out + '\n'
+        if err != '':
+            tot_error += err + '\n'
+
+    tot_output += str(main_process_bar)
+    tot_output = tot_output.strip()
+    tot_error = tot_error.strip()
+
+    # Truncate and rewrite stdout and stderr of the main process
+    sys.stdout.truncate(0)
+    sys.stdout.write(tot_output)
+    sys.stderr.truncate(0)
+    sys.stderr.write(tot_error)
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
@@ -68,6 +109,11 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     available_gpus = [i for i in range(num_gpus)]
     processes = []
     associated_gpus = []
+    output_files = []
+    error_files = []
+
+    # Temporary directory to store output files. This will automatically be deleted
+    writing_dir = tempfile.TemporaryDirectory(dir=os.getcwd())
 
     # Custom tqdm bar
     progress_bar = tqdm(total=len(commands), file=sys.stdout)
@@ -77,7 +123,7 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
         no_sleep = False
 
         # In this case we have enough gpus available to launch the job that needs the less gpus
-        if len(available_gpus) >= gpu_footprints[0]:
+        if len(available_gpus) >= gpu_footprints[0] and len(commands) > 0:
 
             no_sleep = True
 
@@ -91,11 +137,17 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
             allocated_gpus = available_gpus[0:footprint]
             available_gpus = available_gpus[footprint:]
 
+            # Create output and error files
+            output_file = open(os.path.join(writing_dir.name, str(uuid.uuid4()) + '.out'), mode='w+b')
+            error_file = open(os.path.join(writing_dir.name, str(uuid.uuid4()) + '.err'), mode='w+b')
+            output_files.append(output_file)
+            error_files.append(error_file)
+
             # exclusive option is on by default for step allocations, and exact is implicitly set by --cpus-per-task,
             # but we still set them explicitly for completeness
             full_command = (f'srun --exclusive --exact --ntasks=1 --gpus-per-task={footprint} --cpus-per-task={cpus} '
                             f'--mem={mem}G {executable}')
-            p = subprocess.Popen(shlex.split(full_command), stdout=sys.stdout, stderr=sys.stderr, bufsize=0)
+            p = subprocess.Popen(shlex.split(full_command), stdout=output_file, stderr=error_file, bufsize=0)
 
             # Add them to the list of running processes
             processes.append(p)
@@ -119,20 +171,23 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
             # Update progress bar
             progress_bar.update(len(indices_to_remove))
 
-        # If we scheduled all jobs, break from the infinite loop
-        if len(gpu_footprints) == 0:
+        # If all jobs are finished, break from the infinite loop
+        if len(commands) == 0 and len(processes) == 0:
             break
 
-        # Sleep for 3 seconds before restarting the loop and check if we have enough resources to launch
+        # Sleep for 5 seconds before restarting the loop and check if we have enough resources to launch
         # a new job
         if not no_sleep:
-            time.sleep(3)
+            synchronize_file_streams(output_files, error_files, progress_bar)
+            time.sleep(5)
 
-    # Sleep until all processes are finished (they have all been scheduled at this point)
-    for process in processes:
-        process.wait()
-        # Update when process is finished waiting
-        progress_bar.update(1)
+    # Synchronize one last time after finishing all subprocesses
+    synchronize_file_streams(output_files, error_files, progress_bar)
+
+    # Close all files
+    for f1, f2 in zip(output_files, error_files):
+        f1.close()
+        f2.close()
 
     # Close the progress bar
     progress_bar.close()
