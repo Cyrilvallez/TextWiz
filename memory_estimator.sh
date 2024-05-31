@@ -5,7 +5,7 @@
 #SBATCH --error=%x-%j.err
 #SBATCH --time=10-00:00:00
 #SBATCH --cpus-per-task=15
-#SBATCH --mem=280G
+#SBATCH --mem=200G
 #SBATCH --partition=nodes
 #SBATCH --gres=gpu:a100:5
 #SBATCH --chdir=/cluster/raid/home/vacy/TextWiz
