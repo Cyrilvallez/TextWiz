@@ -231,7 +231,7 @@ if __name__ == '__main__':
     if int4:
         commands = [c + ' --int4' for c in commands]
     # Override for Bloom due to its size
-    if not (int8 or int4):
+    if not (int8 or int4) and 'bloom-176B' in models:
         idx = models.index('bloom-176B')
         commands[idx] += ' --int8'
 
