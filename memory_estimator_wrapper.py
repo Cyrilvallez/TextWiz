@@ -217,6 +217,8 @@ if __name__ == '__main__':
 
     # Select models
     models = textwiz.loader.ALLOWED_CAUSAL_MODELS
+    models.remove('bloom-176B')
+    models.remove('command-r-plus')
 
     print(f'Launching computations with {num_gpus} gpus available.')
 
