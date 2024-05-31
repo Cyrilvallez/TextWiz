@@ -171,10 +171,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     dt = time.time() - t0
 
     # Use tqdm.write instead of print to avoid messing with progress bars
-    tqdm.write(f'Done with {model_name} in {dt/3600:.2f} h!')
-
-    del model
-    gc.collect()
+    print(f'Done with {model_name} in {dt/3600:.2f} h!')
 
 
 if __name__ == '__main__':
