@@ -217,6 +217,7 @@ if __name__ == '__main__':
 
     # Select models
     models = textwiz.loader.ALLOWED_CAUSAL_MODELS
+    models = list(models)
     models.remove('bloom-176B')
     models.remove('command-r-plus')
 
