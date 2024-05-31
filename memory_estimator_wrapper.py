@@ -45,8 +45,8 @@ def synchronize_file_streams(output_files: list, error_files: list, main_process
             tot_error += err + '\n'
 
     tot_output += str(main_process_bar)
-    tot_output = tot_output.strip()
-    tot_error = tot_error.strip()
+    tot_output = tot_output.strip() + '\n'
+    tot_error = tot_error.strip() + '\n'
 
     # Truncate and rewrite stdout and stderr of the main process if necessary
     sys.stdout.truncate(0)
