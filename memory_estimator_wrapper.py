@@ -48,17 +48,11 @@ def synchronize_file_streams(output_files: list, error_files: list, main_process
     tot_output = tot_output.strip()
     tot_error = tot_error.strip()
 
-    sys.stdout.seek(0)
-    current_output = sys.stdout.read()
-    sys.stderr.seek(0)
-    current_error = sys.stderr.read()
     # Truncate and rewrite stdout and stderr of the main process if necessary
-    if tot_output != current_output:
-        sys.stdout.truncate(0)
-        sys.stdout.write(tot_output)
-    if tot_error != current_error:
-        sys.stderr.truncate(0)
-        sys.stderr.write(tot_error)
+    sys.stdout.truncate(0)
+    sys.stdout.write(tot_output)
+    sys.stderr.truncate(0)
+    sys.stderr.write(tot_error)
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
