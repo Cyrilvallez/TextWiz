@@ -151,15 +151,15 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         input_ids = large_tokens[:, :input_size]
                 
         # Try to get memory needs for current input_ids
-        max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
-        # try:
-        #     max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
-        # # If OOM, exit loop and save results
-        # except RuntimeError as e:
-        #     if isinstance(e, torch.cuda.OutOfMemoryError):
-        #         break
-        #     else:
-        #         raise e
+        # max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
+        try:
+            max_peak_without_cache, cache_size, max_peak_with_cache = single_memory_pass(model, input_ids)
+        # If OOM, exit loop and save results
+        except RuntimeError as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                break
+            else:
+                raise e
 
         # Add entries to result dictionary
         model_memory_consumption['without cache'][input_size] = max_peak_without_cache
