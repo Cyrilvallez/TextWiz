@@ -647,9 +647,6 @@ class Llama3Conversation(GenericConversation):
             else:
                 prompt += self.start_role + self.assistant_token + self.end_role + '\n\n'
 
-        # TODO: REMOVE THIS WHEN THEY PATCH IT IN TRANSFORMERS!!!!!!!!
-        prompt = self.bos_token + prompt
-
         return prompt
 
 
