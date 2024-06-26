@@ -56,7 +56,7 @@ def synchronize_file_streams(output_files: list, error_files: list, main_process
 
 
 def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[str], cpus_per_task: int | list[int] = 2,
-                       memory: float | list[float] = 35):
+                       memory: float | list[float] = 30):
     """Dispatch and run all `commands` using `srun` (https://slurm.schedmd.com/srun.html), using the number of
     gpus contained in `gpu_footprints`. The dispatch of models to gpus is very naive: as soon as enough gpus
     are available to run the job that requires the less gpu, we launch it. Thus the gpu efficiency may not be the
@@ -76,7 +76,7 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
         to use for each `commands`, by default 2.
     memory : float | list[float], optional
         A float describing the amount of RAM (GB) to use for all task, or a list of floats describing the the
-        amount of RAM (GB) to use for each `commands`, by default 35.
+        amount of RAM (GB) to use for each `commands`, by default 30.
     """
 
     if any([x > num_gpus for x in gpu_footprints]):
