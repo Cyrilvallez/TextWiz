@@ -1,8 +1,6 @@
 import os
 import sys
-import gc
 import argparse
-import time
 import logging
 from tqdm import tqdm
 
@@ -123,8 +121,6 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         The maximum fraction of the other gpus memory to reserve for the model. The default is 0.8.
     """
 
-    t0 = time.time()
-
     # Override quantization for bloom due to its size
     if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
         quantization_8bits = True
@@ -171,11 +167,6 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
       
         # Save results
         utils.save_json(model_memory_consumption, filename_memory)
-
-    dt = time.time() - t0
-
-    # Use tqdm.write instead of print to avoid messing with progress bars
-    print(f'Done with {model_name} in {dt/3600:.2f} h!')
 
 
 if __name__ == '__main__':
