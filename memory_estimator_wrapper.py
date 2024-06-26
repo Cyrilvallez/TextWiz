@@ -113,7 +113,7 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     error_files = []
 
     # Temporary directory to store output files. This will automatically be deleted
-    writing_dir = tempfile.TemporaryDirectory(dir=os.getcwd())
+    # writing_dir = tempfile.TemporaryDirectory(dir=os.getcwd())
 
     # Custom tqdm bar
     progress_bar = tqdm(total=len(commands), file=sys.stdout, desc='Dispatcher')
@@ -138,17 +138,18 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
             available_gpus = available_gpus[footprint:]
 
             # Create output and error files
-            filename = re.search(r'python3 -u .+?\.py (.+?)(?:$| )', executable).group(1)
-            output_file = open(os.path.join(writing_dir.name, filename + '.out'), mode='w+b')
-            error_file = open(os.path.join(writing_dir.name, filename + '.err'), mode='w+b')
-            output_files.append(output_file)
-            error_files.append(error_file)
+            # filename = re.search(r'python3 -u .+?\.py (.+?)(?:$| )', executable).group(1)
+            # output_file = open(os.path.join(writing_dir.name, filename + '.out'), mode='w+b')
+            # error_file = open(os.path.join(writing_dir.name, filename + '.err'), mode='w+b')
+            # output_files.append(output_file)
+            # error_files.append(error_file)
 
             # exclusive option is on by default for step allocations, and exact is implicitly set by --cpus-per-task,
             # but we still set them explicitly for completeness
             full_command = (f'srun --exclusive --exact --ntasks=1 --gpus-per-task={footprint} --cpus-per-task={cpus} '
                             f'--mem={mem}G {executable}')
-            p = subprocess.Popen(shlex.split(full_command), stdout=output_file, stderr=error_file, bufsize=0)
+            # p = subprocess.Popen(shlex.split(full_command), stdout=output_file, stderr=error_file, bufsize=0)
+            p = subprocess.Popen(shlex.split(full_command), stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
 
             # Add them to the list of running processes
             processes.append(p)
@@ -179,16 +180,16 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
         # Sleep before restarting the loop and check if we have enough resources to launch
         # a new job
         if not no_sleep:
-            synchronize_file_streams(output_files, error_files, progress_bar)
-            time.sleep(20)
+            # synchronize_file_streams(output_files, error_files, progress_bar)
+            time.sleep(5)
 
     # Synchronize one last time after finishing all subprocesses
-    synchronize_file_streams(output_files, error_files, progress_bar)
+    # synchronize_file_streams(output_files, error_files, progress_bar)
 
     # Close all files
-    for f1, f2 in zip(output_files, error_files):
-        f1.close()
-        f2.close()
+    # for f1, f2 in zip(output_files, error_files):
+    #     f1.close()
+    #     f2.close()
 
     # Close the progress bar
     progress_bar.close()

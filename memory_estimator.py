@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import argparse
 import logging
 from tqdm import tqdm
@@ -121,6 +122,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         The maximum fraction of the other gpus memory to reserve for the model. The default is 0.8.
     """
 
+    t0 = time.time()
+
     # Override quantization for bloom due to its size
     if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
         quantization_8bits = True
@@ -129,8 +132,10 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
     filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', model_name, f'{dtype_name}.json')
     if os.path.exists(filename_memory):
-        print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
-        return
+        existing_file = utils.load_json(filename_memory)
+        if len(existing_file['without memory'].keys()) == 50:
+            print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
+            return
 
     # Load model
     model = HFCausalModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits,
@@ -167,6 +172,10 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
       
         # Save results
         utils.save_json(model_memory_consumption, filename_memory)
+
+    dt = time.time() - t0
+
+    print(f'Done with {model_name} in {dt/3600:.2f} h!')
 
 
 if __name__ == '__main__':
