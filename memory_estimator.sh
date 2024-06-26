@@ -16,8 +16,8 @@ eval "$(conda shell.bash hook)"
 # Activate (local) env
 conda activate textwiz
 
-srun -u --ntasks=1 --gpus-per-task=0 --cpus-per-task=1 --mem=5G python3 -u memory_estimator_wrapper.py "$@"
+# srun -u --ntasks=1 --gpus-per-task=0 --cpus-per-task=1 --mem=5G python3 -u memory_estimator_wrapper.py "$@"
 
-# python3 -u memory_estimator_wrapper.py "$@"
+python3 -u memory_estimator_wrapper.py "$@"
 
 conda deactivate
