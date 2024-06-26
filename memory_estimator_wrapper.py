@@ -219,6 +219,7 @@ if __name__ == '__main__':
 
     # Select models
     models = textwiz.loader.ALLOWED_CAUSAL_MODELS
+    models = tuple(x for x in models if x != 'command-r-plus')
 
     print(f'Launching computations with {num_gpus} gpus available.')
 
