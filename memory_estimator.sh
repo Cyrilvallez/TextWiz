@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=15
 #SBATCH --mem=200G
 #SBATCH --partition=nodes
-#SBATCH --gres=gpu:a100:7
+#SBATCH --gres=gpu:a100:6
 #SBATCH --chdir=/cluster/raid/home/vacy/TextWiz
 
 # Initialize the shell to use local conda
