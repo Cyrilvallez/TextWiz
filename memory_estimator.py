@@ -122,7 +122,6 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         The maximum fraction of the other gpus memory to reserve for the model. The default is 0.8.
     """
 
-    print(f'Starting with {model_name}!')
     t0 = time.time()
 
     # Override quantization for bloom due to its size
@@ -137,6 +136,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
         if len(existing_file['without cache'].keys()) == 50:
             print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
             return
+        
+    print(f'Starting with {model_name}!')
 
     # Load model
     model = HFCausalModel(model_name, quantization_8bits=quantization_8bits, quantization_4bits=quantization_4bits,
