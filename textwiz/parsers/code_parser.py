@@ -109,6 +109,7 @@ PYTHON_CODE_REGEX = r'(?:^|\n)(' + PYTHON_GROUP + r'.*?)' + r'(?:$|(?:\n(?!' + P
 PYTHON_CODE_REGEXES = [
     # Regexes that match the usual markdown python syntax with 3 backticks
     r'```python(?: )*\n(.*?)(?:$|\n```)',
+    r'```Python(?: )*\n(.*?)(?:$|\n```)',
     r'```(?: )*\n(.*?)(?:$|\n```)',
     PYTHON_CODE_REGEX,
 ]
