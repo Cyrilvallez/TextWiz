@@ -133,7 +133,7 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', model_name, f'{dtype_name}.json')
     if os.path.exists(filename_memory):
         existing_file = utils.load_json(filename_memory)
-        if len(existing_file['without memory'].keys()) == 50:
+        if len(existing_file['without cache'].keys()) == 50:
             print(f'It seems like a memory estimation already exists for {model_name} and currently selected dtype.')
             return
 
