@@ -61,7 +61,11 @@ def single_memory_pass(model: HFCausalModel, input_ids: torch.Tensor) -> tuple[f
     with torch.no_grad():
         # Initialize a DynamicCache as will be done by default
         past_key_values = DynamicCache() if model.model._supports_default_dynamic_cache() else None
-        output = model.model(input_ids, past_key_values=past_key_values, return_dict=True, use_cache=True)
+        if model.model._supports_num_logits_to_keep():
+            output = model.model(input_ids, past_key_values=past_key_values, return_dict=True, use_cache=True,
+                                 num_logits_to_keep=1)
+        else:
+            output = model.model(input_ids, past_key_values=past_key_values, return_dict=True, use_cache=True)
     
     memory_used = {}
     for gpu_rank in gpus:
