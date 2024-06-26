@@ -109,10 +109,10 @@ def dispatch_jobs_srun(gpu_footprints: list[int], num_gpus: int, commands: list[
     available_gpus = [i for i in range(num_gpus)]
     processes = []
     associated_gpus = []
-    output_files = []
-    error_files = []
 
     # Temporary directory to store output files. This will automatically be deleted
+    # output_files = []
+    # error_files = []
     # writing_dir = tempfile.TemporaryDirectory(dir=os.getcwd())
 
     # Custom tqdm bar
