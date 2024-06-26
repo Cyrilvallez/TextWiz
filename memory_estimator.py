@@ -151,7 +151,8 @@ def memory_estimation_causal_model(model_name: str, quantization_8bits: bool = F
     # select input sizes to use depending on model max context
     input_sizes = np.linspace(32, max_input_size - 32, num=50, endpoint=True, dtype=int).tolist()
 
-    for input_size in tqdm(input_sizes, desc=model_name, file=sys.stdout):
+    # for input_size in tqdm(input_sizes, desc=model_name, file=sys.stdout):
+    for input_size in input_sizes:
 
         # Select inputs
         input_ids = large_tokens[:, :input_size]
