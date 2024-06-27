@@ -196,7 +196,7 @@ def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, q
     # but in practice we do
     if (model_name == 'bloom-176B' and quantization_8bits and not quantization_4bits and \
         max_fraction_gpu_0 == 0.8 and max_fraction_gpus == 0.8):
-        return 6, {i: '35GiB' for i in range(6)}
+        return 6, {i: '38GiB' for i in range(6)}
 
     # If not provided take the default one
     if dtype is None:
