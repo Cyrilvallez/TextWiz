@@ -176,6 +176,7 @@ def memory_estimation(model_name: str, quantization_8bits: bool = False, quantiz
     # Initialize filenames and return if files already exist
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
 
+    already_exist = False
     if CAUSAL:
         filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'causal', model_name, f'{dtype_name}.json')
         if os.path.exists(filename_memory):
