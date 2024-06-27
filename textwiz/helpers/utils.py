@@ -177,9 +177,9 @@ def copy_docstring_and_signature(copied_func: Callable[P, T]):
     return wrapper
 
 
-def memory_estimation(reference_file: str, input_size: int, max_new_tokens: int) -> tuple[float, bool]:
+def memory_estimation_causal(reference_file: str, input_size: int, max_new_tokens: int) -> tuple[float, bool]:
     """Compute the memory needed in GiB for a batch size of 1 given the current `reference_file` (memory estimations for
-    a given model), and current `input_size` and `max_new_tokens`.
+    a given causal model), and current `input_size` and `max_new_tokens`.
 
     Parameters
     ----------
@@ -234,6 +234,54 @@ def memory_estimation(reference_file: str, input_size: int, max_new_tokens: int)
     memory_needed_without_cache = fit_results['without cache'](input_size)
     memory_needed_with_cache = fit_results['cache size'](input_size + max_new_tokens) + fit_results['with cache'](input_size + max_new_tokens)
     memory_needed = max(memory_needed_without_cache, memory_needed_with_cache)
+
+    return memory_needed, passes_r2_test
+
+
+def memory_estimation_embedding(reference_file: str, input_size: int) -> float:
+    """Compute the memory needed in GiB for a batch size of 1 given the current `reference_file` (memory estimations for
+    a given embedding model), and current `input_size`.
+
+    Parameters
+    ----------
+    reference_file : str
+        File containing the memory estimations for a given model and dtype.
+    input_size : int
+        The input length.
+    Returns
+    -------
+    tuple[float, bool]
+        Tuple containing the memory needed in GiB and whether this estimation is good or not (depending on goodness
+        of fit).
+    """
+    
+    memory_footprints = load_json(reference_file)
+    # Convert keys to int
+    memory_footprints = {int(k): v for k, v in memory_footprints.items()}
+
+    passes_r2_test = True
+
+    # Fit the curve
+    x = np.array(list(memory_footprints.keys()))
+    y = np.array(list(memory_footprints.values()))
+    # Make sure vectors are sorted correctly (dics should stay ordered but you never know)
+    sorting = np.argsort(x)
+    x = x[sorting]
+    y = y[sorting]
+
+    # Memory usage of forward pass is linear when using flash attention implementation, else quadratic.
+    # First try linear
+    fit, stats = np.polynomial.Polynomial.fit(x, y, deg=1, full=True)
+    r2 = r_squared(stats[0], y)
+    # If bad fit, fallback to quadratic
+    if r2 < 0.95:
+        fit, stats = np.polynomial.Polynomial.fit(x, y, deg=2, full=True)
+        r2 = r_squared(stats[0], y)
+        # This should always be the case, but check it if for some reason the behavior is not sufficiently linear (or quadratic)
+        if r2 < 0.95:
+            passes_r2_test = False
+
+    memory_needed = fit(input_size)
 
     return memory_needed, passes_r2_test
 

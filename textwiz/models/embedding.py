@@ -1,3 +1,7 @@
+import os
+import psutil
+import warnings
+
 import torch
 import numpy as np
 
@@ -49,19 +53,17 @@ class HFEmbeddingModel(HFBaseModel):
             return last_hidden_states[torch.arange(batch_size, device=device), sequence_lengths, :]
 
     
-    def embed(self, inputs: list[str] | str, instruction: str | None = None,
-              max_batch_size: int | None = None) -> np.ndarray:
+    @torch.no_grad()
+    def embed(self, inputs: list[str] | str, max_batch_size: int | None = None) -> np.ndarray:
         """Return the embeddings for the given `inputs`.
 
         Parameters
         ----------
         inputs : list[str] | str
             The input text (or batch of texts)
-        instruction : str | None, optional
-            _description_, by default None
         max_batch_size : int | None, optional
             If given, will use this as the maximum batch size for a single model pass. By default `None`, i.e
-            no maximum.
+            the maximum will be automatically determined.
 
         Returns
         -------
@@ -84,27 +86,34 @@ class HFEmbeddingModel(HFBaseModel):
             input_ids = input_ids.to(device=self.input_device)
             attention_mask = attention_mask.to(device=self.input_device)
 
-        # No maximum -> will pass all inputs as a single batch
+        # Here we assume that chunks were chosen by number of tokens, i.e. all `inputs` have appromately the same length.
+        # If this is not the case, then for a large number of ìnputs` it would be better to first divide them by length,
+        # and then estimate the batch size BEFORE tokenizing them with padding to maximize efficiency. For example, if only
+        # one input is very large compared to the others, then all will be padded to that length so the maximum batch size
+        # will be smaller than what would be feasible without that long input.
         if max_batch_size is None:
-            max_batch_size = input_length
+            max_batch_size = self.infer_best_batch_size(input_ids.shape[1])
 
         current_index = 0
-        final_output = torch.tensor([], dtype=torch.float32, device='cpu', requires_grad=False)
+        final_output = []
         while True:
             
             batch_size = min(max_batch_size, input_length-current_index)
             _slice = slice(current_index, current_index+batch_size)
 
-            with torch.no_grad():
-                outputs = self.model(input_ids=input_ids[_slice, :], attention_mask=attention_mask[_slice, :])
-                embeddings = self.last_token_pool(outputs.last_hidden_state, attention_mask[_slice, :])
+            # Gradients were already disabled here
+            outputs = self.model(input_ids=input_ids[_slice, :], attention_mask=attention_mask[_slice, :])
+            embeddings = self.last_token_pool(outputs.last_hidden_state, attention_mask[_slice, :])
 
-            # Concatenate current batch to final vector
-            final_output = torch.cat([final_output, embeddings.cpu()], dim=0)
+            # Add current batch to final result
+            final_output.append(embeddings.cpu())
 
             current_index += batch_size
             if current_index >= input_length:
                 break
+
+        # Concatenate all result tensors
+        final_output = torch.cat(final_output, dim=0).float()
 
         return final_output.numpy()
     
@@ -112,3 +121,73 @@ class HFEmbeddingModel(HFBaseModel):
     @utils.copy_docstring_and_signature(embed)
     def __call__(self, *args, **kwargs):
         return self.embed(*args, **kwargs)
+    
+
+    def infer_best_batch_size(self, input_size: int) -> int:
+        """Try to infer the best (largest) possible batch size for the model given the current `input_size`,
+        By default, this function checks if a batch memory footprint estimation exists
+        in the folder `memory_estimator`, and falls back to simple heuristics if this is not the case.
+
+        Parameters
+        ----------
+        input_size : int
+            The input length.
+        Returns
+        -------
+        int
+            Estimation of the largest possible batch size.
+        """
+    
+        # Only take 0.92 of the gpu memory into account in order to not completely clutter the memory
+        if not torch.cuda.is_available():
+            memory = psutil.virtual_memory().total / 1024**3
+            available_memory = memory*0.92 - self.get_max_device_memory_footprint()
+        else:
+            memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            available_memory = memory*0.92 - max(torch.cuda.memory_allocated(device) / 1024**3 for device in self.get_gpu_devices())
+
+        # Try to estimate the memory needed for current inputs
+        try:
+            reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'embedding', self.model_name, f'{self.dtype_category()}.json')
+            memory_needed, passes_r2_test = utils.memory_estimation_embedding(reference_file, input_size)
+        # If no precise estimate exist, fall back to simple heuristics
+        except FileNotFoundError:
+            return self.infer_best_batch_size_by_heuristics(available_memory, input_size)
+
+        if not passes_r2_test:
+            warnings.warn((f'Memory estimation for {self.model.__class__.__name__} is not sufficiently precise. '
+                            'Falling back to heuristics.'))
+            return self.infer_best_batch_size_by_heuristics(available_memory, input_size)
+        
+        return int(available_memory // memory_needed)
+    
+
+    def infer_best_batch_size_by_heuristics(self, available_memory: float, input_size: int) -> int:
+        """Infer the largest possible batch size using very simple and raw heuristics. It only uses the number
+        of parameters of the model, which is not a very good indicator. 
+
+        Parameters
+        ----------
+        available_memory : float
+            The memory available for the forward pass.
+        input_size : int
+            The input length.
+
+        Returns
+        -------
+        int
+            A very raw estimate of the best batch size.
+        """
+
+        parameters = self.parameters_count()
+        chunks = (input_size // 2048) + 1 if input_size % 2048 != 0 else input_size // 2048
+        if parameters < 5:
+            batch = int(available_memory // (1 * chunks))
+        elif parameters < 10:
+            batch = int(available_memory // (2 * chunks))
+        elif parameters < 20:
+            batch = int(available_memory // (3 * chunks))
+        else:
+            batch = int(available_memory // (4 * chunks))
+        
+        return max(batch, 1)

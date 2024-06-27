@@ -412,8 +412,8 @@ class HFCausalModel(HFBaseModel):
 
         # Try to estimate the memory needed for current inputs
         try:
-            reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', self.model_name, f'{self.dtype_category()}.json')
-            memory_needed, passes_r2_test = utils.memory_estimation(reference_file, input_size, max_new_tokens)
+            reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'causal', self.model_name, f'{self.dtype_category()}.json')
+            memory_needed, passes_r2_test = utils.memory_estimation_causal(reference_file, input_size, max_new_tokens)
         # If no precise estimate exist, fall back to simple heuristics
         except FileNotFoundError:
             return self.infer_best_batch_size_by_heuristics(available_memory, input_size, max_new_tokens)
@@ -785,6 +785,7 @@ class HFCausalModel(HFBaseModel):
         return new_conv
     
 
+    @torch.no_grad()
     def perplexity(self, text: str, stride = 512) -> float:
         """Compute the perplexity of given `text`. If the number of tokens is larger than the maximum context size,
         use a sliding window with given `stride`. That is, we will move the input of `stride` tokens at each iteration.
@@ -836,21 +837,21 @@ class HFCausalModel(HFBaseModel):
             # Remove batch dimension of size 1 (empty)
             target_ids = target_ids.squeeze(0)
 
-            with torch.no_grad():
-                outputs = self.model(input_ids)
+            # Note that gradients are disabled
+            outputs = self.model(input_ids)
 
-                # Extract the logits for all tokens except the last one (we do not care about the probability
-                # distribution of what would be the new token if we were performing auto-regresive generation)
-                logits = outputs.logits[:, :-1, :]
-                # Remove batch dimension of size 1 (empty)
-                logits = logits.squeeze(0)
+            # Extract the logits for all tokens except the last one (we do not care about the probability
+            # distribution of what would be the new token if we were performing auto-regresive generation)
+            logits = outputs.logits[:, :-1, :]
+            # Remove batch dimension of size 1 (empty)
+            logits = logits.squeeze(0)
 
-                # Logits now have dimension (len(input_ids)-1, vocab_size). This correspond to the logit distribution
-                # for each token given the previous ones. Instead of applying a softmax, taking the probability
-                # corresponding to the input token, and summing, we can directly use the CrossEntropyLoss as a trick. 
-                # That is, we see it as the loss for a problem with C=vocab_size classes, and an "artificial batch"
-                # of size len(input_ids)-1
-                loss += criterion(logits, target_ids)
+            # Logits now have dimension (len(input_ids)-1, vocab_size). This correspond to the logit distribution
+            # for each token given the previous ones. Instead of applying a softmax, taking the probability
+            # corresponding to the input token, and summing, we can directly use the CrossEntropyLoss as a trick. 
+            # That is, we see it as the loss for a problem with C=vocab_size classes, and an "artificial batch"
+            # of size len(input_ids)-1
+            loss += criterion(logits, target_ids)
 
             prev_end_loc = end_loc
             if end_loc == seq_len:
