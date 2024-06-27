@@ -192,12 +192,11 @@ def estimate_model_gpu_footprint(model_name, quantization_8bits: bool = False, q
     if quantization_4bits and quantization_8bits:
         quantization_8bits = False
 
-    # In this case we set it to 0.85 because otherwise bitsandbytes complain that we don't have enough resources
-    # but in practice after loading the model uses less memory than this
+    # In this case we set it manually because otherwise bitsandbytes complain that we don't have enough resources
+    # but in practice we do
     if (model_name == 'bloom-176B' and quantization_8bits and not quantization_4bits and \
         max_fraction_gpu_0 == 0.8 and max_fraction_gpus == 0.8):
-        max_fraction_gpu_0 = 0.85
-        max_fraction_gpus = 0.85
+        return 6, {i: '35GiB' for i in range(6)}
 
     # If not provided take the default one
     if dtype is None:

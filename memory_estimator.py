@@ -163,12 +163,8 @@ def memory_estimation(model_name: str, quantization_8bits: bool = False, quantiz
     t0 = time.time()
 
     # Override quantization for bloom due to its size
-    if model_name == 'bloom-176B':
-        if not (quantization_8bits or quantization_4bits):
-            quantization_8bits = True
-        if quantization_8bits:
-            max_fraction_gpu_0 = 0.95
-            max_fraction_gpus = 0.95
+    if model_name == 'bloom-176B' and not (quantization_8bits or quantization_4bits):
+        quantization_8bits = True
 
     CAUSAL = model_name in loader.ALLOWED_CAUSAL_MODELS
     EMBEDDING = model_name in loader.ALLOWED_EMBEDDING_MODELS
