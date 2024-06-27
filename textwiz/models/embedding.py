@@ -180,14 +180,14 @@ class HFEmbeddingModel(HFBaseModel):
         """
 
         parameters = self.parameters_count()
-        chunks = (input_size // 2048) + 1 if input_size % 2048 != 0 else input_size // 2048
+        chunks = (input_size // 4096) + 1 if input_size % 4096 != 0 else input_size // 4096
         if parameters < 5:
-            batch = int(available_memory // (1 * chunks))
+            batch = 4 * int(available_memory // chunks)
         elif parameters < 10:
-            batch = int(available_memory // (2 * chunks))
+            batch = 2 * int(available_memory // chunks)
         elif parameters < 20:
-            batch = int(available_memory // (3 * chunks))
+            batch = int(available_memory // chunks)
         else:
-            batch = int(available_memory // (4 * chunks))
+            batch = int(available_memory // (2 * chunks))
         
         return max(batch, 1)
