@@ -218,7 +218,7 @@ if __name__ == '__main__':
     num_gpus = torch.cuda.device_count()
 
     # Select models
-    models = textwiz.loader.ALLOWED_CAUSAL_MODELS
+    models = textwiz.loader.ALLOWED_MODELS
 
     print(f'Launching computations with {num_gpus} gpus available.')
 
