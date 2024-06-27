@@ -170,8 +170,8 @@ def memory_estimation(model_name: str, quantization_8bits: bool = False, quantiz
             max_fraction_gpu_0 = 0.95
             max_fraction_gpus = 0.95
 
-    CAUSAL = model in loader.ALLOWED_CAUSAL_MODELS
-    EMBEDDING = model in loader.ALLOWED_EMBEDDING_MODELS
+    CAUSAL = model_name in loader.ALLOWED_CAUSAL_MODELS
+    EMBEDDING = model_name in loader.ALLOWED_EMBEDDING_MODELS
 
     # Initialize filenames and return if files already exist
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
