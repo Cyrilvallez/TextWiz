@@ -2,9 +2,9 @@ import torch
 
 from .. import _infer_model_sizes
 
-# Pretrained llama-2 models
 MODELS_MAPPING = {
     'llama3-8B-walliser': 'finetuned_models/llama3-8B-instruct-walliser',
+    'llama3-8B-walliser-1': 'training_results_peft/merged_models/checkpoint-15',
 }
 MODELS_DTYPES = {model: torch.bfloat16 for model in MODELS_MAPPING.keys()}
 MODELS_PARAMS = _infer_model_sizes(MODELS_MAPPING)
