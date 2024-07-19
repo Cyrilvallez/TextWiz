@@ -525,6 +525,7 @@ PROMPT_MAPPING = {
 
     # Finetuned
     'llama3-8B-walliser': Llama3PromptTemplate,
+    'llama3-8B-walliser-1': Llama3PromptTemplate,
 }
 
 
