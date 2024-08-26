@@ -64,7 +64,11 @@ def single_memory_pass_causal(model: HFCausalModel, input_ids: torch.Tensor) -> 
     with torch.no_grad():
         # Initialize a DynamicCache as will be done by default
         past_key_values = DynamicCache() if model.model._supports_default_dynamic_cache() else None
-        if model.model._supports_num_logits_to_keep():
+        try:
+            _supports_logits = model.model._supports_num_logits_to_keep()
+        except AttributeError:
+            _supports_logits = False
+        if _supports_logits:
             output = model.model(input_ids, past_key_values=past_key_values, return_dict=True, use_cache=True,
                                  num_logits_to_keep=1)
         else:
