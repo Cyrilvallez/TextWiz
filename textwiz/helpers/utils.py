@@ -2,11 +2,16 @@ import os
 import json
 import yaml
 import random
+import importlib.metadata
+from packaging import version
 from typing import Callable, TypeVar, ParamSpec
 
 import torch
 import numpy as np
 
+__transformers_version = version.parse(importlib.metadata.version("transformers"))
+# My last memory saving PR will be available in transformers 4.45
+__is_old_version = __transformers_version < version.parse("4.45.0.dev0")
 
 P = ParamSpec("P")
 T = TypeVar("T")

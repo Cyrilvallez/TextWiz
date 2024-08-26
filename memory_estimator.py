@@ -17,9 +17,7 @@ from textwiz.helpers.constants import RANDOM_LONG_TEXT
 logger = logging.getLogger('transformers.tokenization_utils_base')
 logger.addFilter(warnings_suppressor.LoggingFilter("Token indices sequence length is longer than the specified maximum sequence length for this model"))
 
-__transformers_version = version.parse(importlib.metadata.version("transformers"))
-# My last memory saving PR will be available in transformers 4.45
-__is_old_version = __transformers_version < version.parse("4.45")
+__is_old_version = utils.__is_old_version
 
 
 def memory_usage(past_key_values):

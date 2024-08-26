@@ -11,9 +11,7 @@ from .base import HFBaseModel
 from .. import loader
 from ..helpers import utils
 
-__transformers_version = version.parse(importlib.metadata.version("transformers"))
-# My last memory saving PR will be available in transformers 4.45
-__is_old_version = __transformers_version < version.parse("4.45")
+__is_old_version = utils.__is_old_version
 
 
 class HFEmbeddingModel(HFBaseModel):
