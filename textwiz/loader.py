@@ -6,7 +6,7 @@ import difflib
 from packaging import version
 
 import torch
-from transformers import AutoModelForCausalLM, AutoModel, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModel, AutoTokenizer, BitsAndBytesConfig
 
 from .configs import (
     ALL_MODELS_MAPPING,
@@ -322,6 +322,11 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     else:
         additional_kwargs = {}
 
+    # Add quantization config to args
+    if quantization_4bits:
+        additional_kwargs['quantization_config'] = BitsAndBytesConfig(load_in_4bit=True)
+    elif quantization_8bits:
+        additional_kwargs['quantization_config'] = BitsAndBytesConfig(load_in_8bit=True)
 
     # Flag that will be set to True if we don't even need a device_map and can just put the model on one gpu
     only_move_to_one_gpu = False
@@ -366,8 +371,8 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     if dtype != torch.float32:
         try:
             model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='flash_attention_2',
-                                            device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                            load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+                                            device_map=device_map, torch_dtype=dtype, low_cpu_mem_usage=True,
+                                            **additional_kwargs)
             success = True
         except:
             success = False
@@ -378,8 +383,8 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     if not success:
         try:
             model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='sdpa',
-                                               device_map=device_map, torch_dtype=dtype, load_in_8bit=quantization_8bits,
-                                               load_in_4bit=quantization_4bits, low_cpu_mem_usage=True, **additional_kwargs)
+                                               device_map=device_map, torch_dtype=dtype, low_cpu_mem_usage=True,
+                                               **additional_kwargs)
             success = True
         except:
             success = False
@@ -387,8 +392,7 @@ def load_model(model_name: str, quantization_8bits: bool = False, quantization_4
     # Last try with BetterTransformer, which is the same as sdpa but with coverage for more models
     if not success:
         model = base_class.from_pretrained(ALL_MODELS_MAPPING[model_name], attn_implementation='eager', device_map=device_map,
-                                           torch_dtype=dtype, load_in_8bit=quantization_8bits, load_in_4bit=quantization_4bits,
-                                           low_cpu_mem_usage=True, **additional_kwargs)
+                                           torch_dtype=dtype, low_cpu_mem_usage=True, **additional_kwargs)
         # For some reason bettertransformer is supported for codegen2 models but makes them crash during the forward
         if not ('codegen2-' in model_name):
             # Convert to better transformer to use Pytorch optimizations if supported by the model
