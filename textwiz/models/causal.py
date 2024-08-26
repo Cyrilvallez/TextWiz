@@ -5,6 +5,8 @@ import psutil
 import math
 import copy
 import re
+import importlib.metadata
+from packaging import version
 
 import torch
 import numpy as np
@@ -23,6 +25,10 @@ from ..templates import (
 )
 from ..parsers import CodeParser
 from ..helpers.constants import SENTENCEPIECE_CHARACTER
+
+__transformers_version = version.parse(importlib.metadata.version("transformers"))
+# My last memory saving PR will be available in transformers 4.45
+__is_old_version = __transformers_version < version.parse("4.45")
 
 
 class HFCausalModel(HFBaseModel):
@@ -412,7 +418,8 @@ class HFCausalModel(HFBaseModel):
 
         # Try to estimate the memory needed for current inputs
         try:
-            reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'causal', self.model_name, f'{self.dtype_category()}.json')
+            version_ = "old" if __is_old_version else "new"
+            reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'causal', self.model_name, f'{self.dtype_category()}.json')
             memory_needed, passes_r2_test = utils.memory_estimation_causal(reference_file, input_size, max_new_tokens)
         # If no precise estimate exist, fall back to simple heuristics
         except FileNotFoundError:

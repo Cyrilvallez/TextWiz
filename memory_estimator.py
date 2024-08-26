@@ -1,9 +1,9 @@
 import os
-import sys
 import time
 import argparse
 import logging
-from tqdm import tqdm
+import importlib.metadata
+from packaging import version
 
 import torch
 import numpy as np
@@ -16,6 +16,10 @@ from textwiz.helpers.constants import RANDOM_LONG_TEXT
 # Remove warning when tokenizing sequences longer than expected: we know we are doing it!
 logger = logging.getLogger('transformers.tokenization_utils_base')
 logger.addFilter(warnings_suppressor.LoggingFilter("Token indices sequence length is longer than the specified maximum sequence length for this model"))
+
+__transformers_version = version.parse(importlib.metadata.version("transformers"))
+# My last memory saving PR will be available in transformers 4.45
+__is_old_version = __transformers_version < version.parse("4.45")
 
 
 def memory_usage(past_key_values):
@@ -173,12 +177,13 @@ def memory_estimation(model_name: str, quantization_8bits: bool = False, quantiz
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
 
     already_exist = False
+    version_ = "old" if __is_old_version else "new"
     if CAUSAL:
-        filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'causal', model_name, f'{dtype_name}.json')
+        filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'causal', model_name, f'{dtype_name}.json')
         if os.path.exists(filename_memory):
             already_exist = len(utils.load_json(filename_memory)['without cache'].keys()) == 50
     elif EMBEDDING:
-        filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', 'embedding', model_name, f'{dtype_name}.json')
+        filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'embedding', model_name, f'{dtype_name}.json')
         if os.path.exists(filename_memory):
             already_exist = len(utils.load_json(filename_memory).keys()) == 50
         
