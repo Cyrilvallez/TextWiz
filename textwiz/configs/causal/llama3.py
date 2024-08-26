@@ -2,7 +2,7 @@ import torch
 
 from .. import _infer_model_sizes
 
-# Pretrained llama-2 models
+# Pretrained llama-3 models
 MODELS_MAPPING = {
     'llama3-8B': 'meta-llama/Meta-Llama-3-8B',
     'llama3-70B': 'meta-llama/Meta-Llama-3-70B',

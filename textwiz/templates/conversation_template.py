@@ -691,6 +691,10 @@ CONVERSATION_MAPPING = {
     # Llama3
     'llama3-8B-instruct': Llama3Conversation,
     'llama3-70B-instruct': Llama3Conversation,
+
+    # Llama3.1
+    'llama3.1-8B-instruct': Llama3Conversation,
+    'llama3.1-70B-instruct': Llama3Conversation,
 }
 
 
