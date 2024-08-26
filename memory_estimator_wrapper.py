@@ -3,9 +3,9 @@ import time
 import shlex
 import sys
 import argparse
-import tempfile
-import re
 import os
+import importlib.metadata
+from packaging import version
 from datetime import date
 from tqdm import tqdm
 
@@ -14,6 +14,10 @@ import transformers
 import flash_attn
 
 import textwiz
+
+__transformers_version = version.parse(importlib.metadata.version("transformers"))
+# My last memory saving PR will be available in transformers 4.45
+__is_old_version = __transformers_version < version.parse("4.45")
 
 
 def synchronize_file_streams(output_files: list, error_files: list, main_process_bar: tqdm):
@@ -235,7 +239,8 @@ if __name__ == '__main__':
         commands[idx] += ' --int8'
 
     # Save infos about the benchmark
-    benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', 'infos.json')
+    version_ = "old" if __is_old_version else "new"
+    benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', version_, 'infos.json')
     infos = {
         'date': str(date.today()),
         'GPU_type': 'A100 40GB',
