@@ -84,8 +84,9 @@ def single_memory_pass_causal(model: HFCausalModel, input_ids: torch.Tensor) -> 
     new_token = torch.tensor([[124]], device=input_ids.device)
     # Formating inputs for second forward using cache
     new_input_ids = torch.cat((input_ids, new_token), dim=1)
-    input_dict = model.model.prepare_inputs_for_generation(new_input_ids, past_key_values=output.past_key_values,
-                                                            use_cache=True)
+    cache_position = torch.tensor([input_ids.shape[1]], dtype=torch.int64, device=input_ids.device)
+    input_dict = model.model.prepare_inputs_for_generation(new_input_ids, cache_position=cache_position, past_key_values=output.past_key_values,
+                                                           use_cache=True)
     
     actual_peaks = {}
     for gpu_rank in gpus:
