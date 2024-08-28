@@ -31,7 +31,7 @@ class CausalModelTests(unittest.TestCase):
 
     def test_num_return_sequences(self):
         dummy_prompt = "Write a nice text about monkeys."
-        out = self.model(dummy_prompt, max_new_tokens=5, do_sample=False, num_return_sequences=3)
+        out = self.model(dummy_prompt, max_new_tokens=5, do_sample=True, num_return_sequences=3)
         self.assertIsInstance(out, list)
         self.assertIsInstance(out[0], str)
         self.assertEqual(len(out), 3)

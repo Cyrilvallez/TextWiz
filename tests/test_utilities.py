@@ -127,7 +127,7 @@ class UtilitiesTests(unittest.TestCase):
     @require_gpu
     def test_causal_memory_estimation(self):
         model = HFCausalModel(_default_causal_model_name)
-        dummy_long_input = torch.randint(0, 5000, (1, 500), dtype=model.dtype, device=model.input_device)
+        dummy_long_input = torch.randint(0, 5000, (1, 500), device=model.input_device)
         new_tokens = 200
 
         gpus = model.get_gpu_devices()
