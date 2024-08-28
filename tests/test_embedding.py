@@ -27,7 +27,7 @@ class EmbeddingModelTests(unittest.TestCase):
         dummy_input = ["Nice lake", "Nice mountains and lake"]
         embeddings = self.model(dummy_input)
         self.assertIsInstance(embeddings, np.ndarray)
-        self.assertEqual(tuple(embeddings.shape), (2, 2048))
+        self.assertEqual(tuple(embeddings.shape), (2, 4096))
 
 
 if __name__ == '__main__':
