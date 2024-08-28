@@ -1,8 +1,6 @@
 import os
 import psutil
 import warnings
-import importlib.metadata
-from packaging import version
 
 import torch
 import numpy as np
@@ -11,7 +9,7 @@ from .base import HFBaseModel
 from .. import loader
 from ..helpers import utils
 
-__is_old_version = utils.__is_old_version
+_is_old_version = utils._is_old_version
 
 
 class HFEmbeddingModel(HFBaseModel):
@@ -152,7 +150,7 @@ class HFEmbeddingModel(HFBaseModel):
 
         # Try to estimate the memory needed for current inputs
         try:
-            version_ = "old" if __is_old_version else "new"
+            version_ = "old" if _is_old_version else "new"
             reference_file = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'embedding', self.model_name, f'{self.dtype_category()}.json')
             memory_needed, passes_r2_test = utils.memory_estimation_embedding(reference_file, input_size)
         # If no precise estimate exist, fall back to simple heuristics

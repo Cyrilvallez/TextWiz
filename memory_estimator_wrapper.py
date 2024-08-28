@@ -17,7 +17,7 @@ import textwiz
 
 __transformers_version = version.parse(importlib.metadata.version("transformers"))
 # My last memory saving PR will be available in transformers 4.45
-__is_old_version = __transformers_version < version.parse("4.45.0.dev0")
+_is_old_version = __transformers_version < version.parse("4.45.0.dev0")
 
 
 def synchronize_file_streams(output_files: list, error_files: list, main_process_bar: tqdm):
@@ -239,7 +239,7 @@ if __name__ == '__main__':
         commands[idx] += ' --int8'
 
     # Save infos about the benchmark
-    version_ = "old" if __is_old_version else "new"
+    version_ = "old" if _is_old_version else "new"
     benchmark_info_filename = os.path.join(textwiz.helpers.utils.DATA_FOLDER, 'memory_estimator', version_, 'infos.json')
     infos = {
         'date': str(date.today()),

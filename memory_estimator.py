@@ -17,7 +17,7 @@ from textwiz.helpers.constants import RANDOM_LONG_TEXT
 logger = logging.getLogger('transformers.tokenization_utils_base')
 logger.addFilter(warnings_suppressor.LoggingFilter("Token indices sequence length is longer than the specified maximum sequence length for this model"))
 
-__is_old_version = utils.__is_old_version
+_is_old_version = utils._is_old_version
 
 
 def memory_usage(past_key_values):
@@ -180,7 +180,7 @@ def memory_estimation(model_name: str, quantization_8bits: bool = False, quantiz
     dtype_name = dtype_category(model_name, quantization_4bits=quantization_4bits, quantization_8bits=quantization_8bits)
 
     already_exist = False
-    version_ = "old" if __is_old_version else "new"
+    version_ = "old" if _is_old_version else "new"
     if CAUSAL:
         filename_memory = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'causal', model_name, f'{dtype_name}.json')
         if os.path.exists(filename_memory):

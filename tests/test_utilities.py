@@ -144,7 +144,7 @@ class UtilitiesTests(unittest.TestCase):
         
         memory_peak = max(memory_used.values())
 
-        version_ = "old" if utils.__is_old_version else "new"
+        version_ = "old" if utils._is_old_version else "new"
         _default_estimation_path = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'causal', model.model_name, f'{model.dtype_category()}.json')
         memory_estimation, _ = utils.memory_estimation_causal(_default_estimation_path, dummy_long_input.shape[1], new_tokens)
 
