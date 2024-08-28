@@ -146,7 +146,8 @@ class UtilitiesTests(unittest.TestCase):
 
         version_ = "old" if utils._is_old_version else "new"
         _default_estimation_path = os.path.join(utils.DATA_FOLDER, 'memory_estimator', version_, 'causal', model.model_name, f'{model.dtype_category()}.json')
-        memory_estimation, _ = utils.memory_estimation_causal(_default_estimation_path, dummy_long_input.shape[1], new_tokens)
+        memory_estimation, valid_estimation = utils.memory_estimation_causal(_default_estimation_path, dummy_long_input.shape[1], new_tokens)
+        self.assertTrue(valid_estimation)
 
         relative_error = np.abs(memory_peak - memory_estimation) / memory_peak
         # Assert we get an approximation within 2%
