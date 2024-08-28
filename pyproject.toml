@@ -43,14 +43,6 @@ dynamic = ["version"]
 version = {attr = "textwiz.__version__"}
 
 
-# [project.optional-dependencies]
-# gui = ["PyQt5"]
-# cli = [
-#   "rich",
-#   "click",
-# ]
-
-
 [project.urls]
 Homepage = "https://github.com/Cyrilvallez/TextWiz"
 Issues = "https://github.com/Cyrilvallez/TextWiz/issues"
