@@ -151,7 +151,7 @@ class UtilitiesTests(unittest.TestCase):
 
         relative_error = np.abs(memory_peak - memory_estimation) / memory_peak
         # Assert we get an approximation within 5%
-        self.assertTrue(relative_error < 0.02)
+        self.assertTrue(relative_error < 0.05)
 
     def test_python_parser(self):
         parser = PythonParser()
