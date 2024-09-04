@@ -44,7 +44,7 @@ version = {attr = "textwiz.__version__"}
 
 # CLI interfaces
 [project.scripts]
-textwiz-memory = "textwiz.memory:memory_estimation_entrypoint"
+textwiz-memory = "textwiz.cli:memory_estimation_entrypoint"
 
 
 [project.urls]
