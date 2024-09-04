@@ -92,4 +92,8 @@ print(conv.model_history_text[-1])
 
 As one can observe, it is mush easier with `TextWiz`, and beginners do not have to worry about any details, be it proper tokenization, chat template, best dtype, torch device, end of sequence (eos) tokens, etc...
 
+# Acknowledgements
+
+This project has not received any external funding.
+
 # References
