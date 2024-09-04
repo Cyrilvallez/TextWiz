@@ -42,6 +42,10 @@ dynamic = ["version"]
 [tool.setuptools.dynamic]
 version = {attr = "textwiz.__version__"}
 
+# CLI interfaces
+[project.scripts]
+textwiz-memory = "textwiz.memory"
+
 
 [project.urls]
 Homepage = "https://github.com/Cyrilvallez/TextWiz"
