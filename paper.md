@@ -36,7 +36,7 @@ textwiz-memory llama3-8B 1122 512
 
 # State of the field
 
-The most commonly used Python package for using LLMs is `transformers` [@transformers]. However, as explained, every model usually has its own implementation/usage details, making it hard to run the same text generation pipeline out-of-the-box for different models. Common pitfalls are also the responsability of the users to navigate. `TextWiz` goes one big step beyond, in order to provide one common interface and alleviate all common issues. It is also much simpler to use for beginners. Here is a very simple code snippet required to have a conversation with  using `transformers`:
+The most commonly used Python package for using LLMs is `transformers` [@transformers]. However, as explained, every model usually has its own implementation/usage details, making it hard to run the same text generation pipeline out-of-the-box for different models. Common pitfalls are also the responsability of the users to navigate. `TextWiz` goes one big step beyond, in order to provide one common interface and alleviate all common issues. It is also much simpler to use for beginners. Here is a very simple code snippet required to have a conversation with Llama3 [@llama3] using `transformers`:
 
 ```py
 from transformers import AutoTokenizer, AutoModelForCausalLM
